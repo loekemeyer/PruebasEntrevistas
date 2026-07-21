@@ -9,6 +9,9 @@
 
 export const MEMORIA_TIEMPO_SUGERIDO_MIN = 15;
 
+/** Tiempo máximo de la prueba de Memoria, en segundos (15 minutos). */
+export const MEMORIA_LIMITE_SEGUNDOS = 15 * 60;
+
 /**
  * Texto que el candidato debe LEER y TIPEAR para estudiar (fase de estudio).
  * Se revela de a poco a medida que tipea (letra por letra, con look-ahead corto),

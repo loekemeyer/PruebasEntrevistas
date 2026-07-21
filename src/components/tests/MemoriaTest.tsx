@@ -12,6 +12,13 @@ type Resultado = {
 // Cuántas letras se revelan por delante de la posición correcta actual.
 const LOOKAHEAD = 14;
 
+function fmt(seg: number): string {
+  const s = Math.max(0, Math.round(seg));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
 export default function MemoriaTest({
   token,
   nombre,
@@ -19,6 +26,8 @@ export default function MemoriaTest({
   textoEstudio,
   preguntas,
   tiempoSugeridoMin,
+  limiteSegundos,
+  iniciadoAtInicial,
 }: {
   token: string;
   nombre: string;
@@ -26,6 +35,8 @@ export default function MemoriaTest({
   textoEstudio: string;
   preguntas: PreguntaPub[];
   tiempoSugeridoMin: number;
+  limiteSegundos: number;
+  iniciadoAtInicial: string | null;
 }) {
   const [fase, setFase] = useState<"intro" | "estudio" | "preguntas">("intro");
   const [typed, setTyped] = useState("");
@@ -33,9 +44,25 @@ export default function MemoriaTest({
   const [errores, setErrores] = useState(0);
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [excedido, setExcedido] = useState(false);
+  const [tiempoTotal, setTiempoTotal] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [iniciando, setIniciando] = useState(false);
+  const [startMs, setStartMs] = useState<number | null>(
+    iniciadoAtInicial ? Date.parse(iniciadoAtInicial) : null
+  );
+  const [restante, setRestante] = useState(limiteSegundos);
   const inicioRef = useRef(0);
   const areaRef = useRef<HTMLTextAreaElement>(null);
+
+  // cronómetro (arranca al empezar; persiste en la DB vía iniciado_at)
+  useEffect(() => {
+    if (startMs === null) return;
+    const tick = () => setRestante(limiteSegundos - (Date.now() - startMs) / 1000);
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [startMs, limiteSegundos]);
 
   const logEvento = useCallback(
     (evento: string, meta?: unknown) => {
@@ -117,6 +144,12 @@ export default function MemoriaTest({
   }, [fase, logEvento]);
 
   async function empezarEstudio() {
+    setIniciando(true);
+    // marca/lee el inicio en la DB (cronómetro no reseteable)
+    const res = await fetch(`/api/prueba/${token}/memoria/iniciar`, { method: "POST" });
+    const j = await res.json().catch(() => ({}));
+    setIniciando(false);
+    if (j?.ok && j.iniciadoAt) setStartMs(Date.parse(j.iniciadoAt));
     try {
       await document.documentElement.requestFullscreen?.();
     } catch {
@@ -155,7 +188,11 @@ export default function MemoriaTest({
     });
     const j = await res.json().catch(() => ({}));
     setEnviando(false);
-    if (j.ok) setResultado(j.resultado);
+    if (j.ok) {
+      setResultado(j.resultado);
+      setExcedido(!!j.excedido);
+      setTiempoTotal(typeof j.tiempoTotalSegundos === "number" ? j.tiempoTotalSegundos : null);
+    }
   }
 
   // ===== Resultado =====
@@ -165,6 +202,12 @@ export default function MemoriaTest({
         <div className="card text-center">
           <p className="text-white/60">Tu puntaje en la Prueba de Memoria</p>
           <p className="my-2 text-5xl font-bold text-indigo-300">{resultado.puntaje}</p>
+          {tiempoTotal !== null && (
+            <p className={`text-sm ${excedido ? "text-red-300" : "text-white/50"}`}>
+              Tiempo total: {fmt(tiempoTotal)}
+              {excedido ? " · ⚠ superó el máximo de 15 min" : ""}
+            </p>
+          )}
         </div>
         <div className="card mt-4 space-y-2">
           {resultado.preguntas.map((p) => (
@@ -194,19 +237,30 @@ export default function MemoriaTest({
           <ol className="list-decimal space-y-2 pl-5">
             <li>
               <b>Estudio:</b> vas a <b>leer y tipear</b> un texto. Se revela de a poco a medida que
-              escribís. Tomate el tiempo que necesites para memorizarlo (sugerido: {tiempoSugeridoMin} min).
+              escribís.
             </li>
             <li>
               <b>Preguntas:</b> cuando termines de tipear el texto, pasás a responder {preguntas.length} preguntas.
               <b> No vas a poder volver al material.</b>
             </li>
           </ol>
-          <p className="rounded-lg bg-amber-500/10 p-3 text-amber-200">
-            El material no se puede copiar ni seleccionar. Se pedirá pantalla completa y se registran
+        </div>
+
+        <div className="card mt-4 border-amber-500/40 bg-amber-500/10">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-amber-200">
+            ⏱ Tiempo máximo: 15 minutos
+          </h2>
+          <p className="mt-2 text-sm text-amber-100/90">
+            El cronómetro <b>arranca cuando tocás «Empezar»</b> y cubre el estudio y las preguntas.
+            Si te pasás, igual podés terminar pero queda registrado que superaste el tiempo.
+            El material no se puede copiar ni seleccionar; se pide pantalla completa y se registran
             los cambios de pestaña o intentos de captura.
           </p>
         </div>
-        <button onClick={empezarEstudio} className="btn-primary mt-6">Empezar a estudiar</button>
+
+        <button onClick={empezarEstudio} disabled={iniciando} className="btn-primary mt-6">
+          {iniciando ? "Iniciando…" : "Empezar (arranca el cronómetro)"}
+        </button>
       </main>
     );
   }
@@ -223,9 +277,18 @@ export default function MemoriaTest({
       >
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Estudio</h1>
-          <span className="badge bg-white/10 text-white/60">
-            {Math.round((matching / textoEstudio.length) * 100)}%
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="badge bg-white/10 text-white/60">
+              {Math.round((matching / textoEstudio.length) * 100)}%
+            </span>
+            <span
+              className={`font-mono text-xl font-bold ${
+                restante <= 0 ? "text-red-400" : restante <= 120 ? "text-amber-300" : "text-white"
+              }`}
+            >
+              {fmt(restante)}
+            </span>
+          </div>
         </div>
         <p className="mt-2 text-sm text-white/60">
           Leé y tipeá el texto. Podés borrar para corregir. Se revela a medida que avanzás.
@@ -297,7 +360,16 @@ export default function MemoriaTest({
   const todasRespondidas = preguntas.every((q) => (respuestas[q.id] ?? "").trim().length > 0);
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-2xl font-bold">Preguntas</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Preguntas</h1>
+        <span
+          className={`font-mono text-xl font-bold ${
+            restante <= 0 ? "text-red-400" : restante <= 120 ? "text-amber-300" : "text-white"
+          }`}
+        >
+          {fmt(restante)}
+        </span>
+      </div>
       <p className="mt-2 text-sm text-white/60">Respondé de forma concisa. Ya no podés volver al material.</p>
       <div className="mt-6 space-y-5">
         {preguntas.map((q, i) => (

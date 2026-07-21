@@ -1,7 +1,12 @@
-import { getCandidatoPorToken, yaCompletada } from "@/lib/db";
+import { getCandidatoPorToken, yaCompletada, getResultado } from "@/lib/db";
 import MemoriaTest from "@/components/tests/MemoriaTest";
 import YaEnviada from "@/components/tests/YaEnviada";
-import { MEMORIA_TEXTO_ESTUDIO, MEMORIA_PREGUNTAS, MEMORIA_TIEMPO_SUGERIDO_MIN } from "@/lib/tests/memoria";
+import {
+  MEMORIA_TEXTO_ESTUDIO,
+  MEMORIA_PREGUNTAS,
+  MEMORIA_TIEMPO_SUGERIDO_MIN,
+  MEMORIA_LIMITE_SEGUNDOS,
+} from "@/lib/tests/memoria";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +18,7 @@ export default async function MemoriaPage({ params }: { params: { token: string 
 
   // Solo enviamos el enunciado de las preguntas (sin respuestas/keys).
   const preguntas = MEMORIA_PREGUNTAS.map((q) => ({ id: q.id, texto: q.texto, tipo: q.tipo }));
+  const prev = await getResultado(cand.id, "memoria");
 
   return (
     <MemoriaTest
@@ -22,6 +28,8 @@ export default async function MemoriaPage({ params }: { params: { token: string 
       textoEstudio={MEMORIA_TEXTO_ESTUDIO}
       preguntas={preguntas}
       tiempoSugeridoMin={MEMORIA_TIEMPO_SUGERIDO_MIN}
+      limiteSegundos={MEMORIA_LIMITE_SEGUNDOS}
+      iniciadoAtInicial={prev?.iniciado_at ?? null}
     />
   );
 }
