@@ -1,0 +1,19 @@
+# Blueprint de Render para publicar la app online desde la rama main.
+# En Render: New + → Blueprint → conectá este repo. Render lee este archivo,
+# crea el servicio y te pide cargar las variables marcadas como sync:false.
+services:
+  - type: web
+    name: pruebas-entrevistas
+    runtime: node
+    plan: free # gratis (se "duerme" tras inactividad; el primer acceso tarda ~30s)
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    autoDeploy: true # cada push a main redeploya solo
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://hrxfctzncixxqmpfhskv.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # SECRETO: lo cargás vos en Render (no se commitea)
+      - key: ADMIN_PASSWORD
+        sync: false # la clave de tu panel de admin
