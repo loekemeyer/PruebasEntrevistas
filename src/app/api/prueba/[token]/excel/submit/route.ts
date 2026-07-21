@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { getCandidatoPorToken, guardarResultado, yaCompletada } from "@/lib/db";
-import { scoreExcel, EXCEL_SHEET, EXCEL_KEY, CellData } from "@/lib/tests/excel";
+import { getCandidatoPorToken, guardarResultado, yaCompletada, getResultado } from "@/lib/db";
+import { scoreExcel, EXCEL_SHEET, EXCEL_KEY, EXCEL_LIMITE_SEGUNDOS, CellData } from "@/lib/tests/excel";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -63,13 +63,26 @@ export async function POST(req: Request, { params }: { params: { token: string }
 
   const resultado = scoreExcel(cells);
 
+  // Tiempo real desde que descargó la planilla (iniciado_at en la DB).
+  const prev = await getResultado(cand.id, "excel");
+  const iniciadoMs = prev?.iniciado_at ? Date.parse(prev.iniciado_at) : null;
+  const tiempoSegundos = iniciadoMs ? Math.round((Date.now() - iniciadoMs) / 1000) : null;
+  const excedido = tiempoSegundos !== null && tiempoSegundos > EXCEL_LIMITE_SEGUNDOS;
+
+  const detalle = {
+    ...resultado,
+    tiempoSegundos,
+    limiteSegundos: EXCEL_LIMITE_SEGUNDOS,
+    excedido,
+  };
+
   await guardarResultado({
     candidatoId: cand.id,
     tipo: "excel",
     puntaje: resultado.puntaje,
-    detalle: resultado,
+    detalle,
     respuestas: { archivo: file.name, tamanio: file.size },
   });
 
-  return NextResponse.json({ ok: true, resultado });
+  return NextResponse.json({ ok: true, resultado: detalle });
 }

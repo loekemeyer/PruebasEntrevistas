@@ -88,6 +88,42 @@ export async function getCandidatoPorToken(token: string): Promise<Candidato | n
   return (data as Candidato) ?? null;
 }
 
+export async function getResultado(
+  candidatoId: string,
+  tipo: TipoPrueba
+): Promise<Resultado | null> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("pe_resultados")
+    .select("*")
+    .eq("candidato_id", candidatoId)
+    .eq("tipo", tipo)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as Resultado) ?? null;
+}
+
+/**
+ * Marca el inicio de una prueba (para el cronómetro). Si ya estaba iniciada,
+ * devuelve el iniciado_at existente (no se puede reiniciar el reloj).
+ */
+export async function iniciarPrueba(
+  candidatoId: string,
+  tipo: TipoPrueba
+): Promise<string> {
+  const supabase = getSupabaseAdmin();
+  const existente = await getResultado(candidatoId, tipo);
+  if (existente?.iniciado_at) return existente.iniciado_at;
+
+  const iniciado = new Date().toISOString();
+  const { error } = await supabase.from("pe_resultados").upsert(
+    { candidato_id: candidatoId, tipo, iniciado_at: iniciado, estado: "en_progreso" },
+    { onConflict: "candidato_id,tipo" }
+  );
+  if (error) throw new Error(error.message);
+  return iniciado;
+}
+
 export async function getResultados(candidatoId: string): Promise<Resultado[]> {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase

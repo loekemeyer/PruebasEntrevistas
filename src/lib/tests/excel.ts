@@ -14,6 +14,9 @@
 
 export const EXCEL_SHEET = "A resolver";
 
+/** Tiempo máximo de la prueba de Excel, en segundos (25 minutos). */
+export const EXCEL_LIMITE_SEGUNDOS = 25 * 60;
+
 export interface CellData {
   value: number | string | boolean | null;
   formula: string | null;
