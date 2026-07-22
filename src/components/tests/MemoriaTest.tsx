@@ -178,7 +178,10 @@ export default function MemoriaTest({
       <main className="mx-auto max-w-2xl p-6">
         <div className="card text-center">
           <p className="text-white/60">Tu puntaje en la Prueba de Memoria</p>
-          <p className="my-2 text-5xl font-bold text-indigo-300">{resultado.puntaje}</p>
+          <p className="my-2 text-5xl font-bold text-indigo-300">
+            {resultado.puntaje}
+            <span className="text-2xl text-white/40"> / 10</span>
+          </p>
           {tiempoTotal !== null && (
             <p className={`text-sm ${excedido ? "text-red-300" : "text-white/50"}`}>
               Tiempo total: {fmt(tiempoTotal)}

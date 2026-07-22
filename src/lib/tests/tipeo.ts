@@ -20,8 +20,25 @@ export const TIPEO_TEXTO =
   "la responsabilidad individual y el cuidado en los detalles permiten que el sistema " +
   "funcione correctamente y que los resultados sean mejores en cada jornada de trabajo.";
 
-// PPM neto que se considera "100%" del puntaje (ajustable).
-const PPM_OBJETIVO = 40;
+/**
+ * Tabla de evaluación (velocidad en PPM neto → puntos sobre 10).
+ * Referencia provista por RRHH: 20→4, 30→5, 35→6, 40→7, 45→8, 55→9, 60→10.
+ * Por debajo de 20 PPM se interpola lineal de 0 a 4.
+ */
+const TABLA_VELOCIDAD: [number, number][] = [
+  [60, 10],
+  [55, 9],
+  [45, 8],
+  [40, 7],
+  [35, 6],
+  [30, 5],
+  [20, 4],
+];
+
+export function velocidadAPuntos(ppm: number): number {
+  for (const [v, p] of TABLA_VELOCIDAD) if (ppm >= v) return p;
+  return Math.max(0, Math.round((ppm / 20) * 4));
+}
 
 export interface EntradaTipeo {
   /** lo que efectivamente tipeó el candidato */
@@ -57,10 +74,8 @@ export function scoreTipeo({ tipeado, segundos }: EntradaTipeo): ResultadoTipeo 
   const ppmNeto = minutos > 0 ? correctos / 5 / minutos : 0;
   const precision = tipeadoLen > 0 ? (correctos / tipeadoLen) * 100 : 0;
 
-  const puntaje = Math.max(
-    0,
-    Math.min(100, Math.round((ppmNeto / PPM_OBJETIVO) * 100))
-  );
+  // Puntaje 0..10 según la tabla de velocidad (sobre PPM neto).
+  const puntaje = velocidadAPuntos(ppmNeto);
 
   return {
     puntaje,

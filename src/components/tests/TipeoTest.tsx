@@ -86,7 +86,10 @@ export default function TipeoTest({
       <main className="mx-auto max-w-2xl p-6">
         <div className="card text-center">
           <p className="text-white/60">Tu puntaje en la Prueba de Tipeo</p>
-          <p className="my-2 text-5xl font-bold text-indigo-300">{resultado.puntaje}</p>
+          <p className="my-2 text-5xl font-bold text-indigo-300">
+            {resultado.puntaje}
+            <span className="text-2xl text-white/40"> / 10</span>
+          </p>
         </div>
         <div className="card mt-4 grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
           <Metrica label="PPM neto" valor={resultado.ppmNeto} />

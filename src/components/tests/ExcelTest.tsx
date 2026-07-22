@@ -12,13 +12,10 @@ const CONSIGNAS = [
   "N3:N8: con +SUMAR.SI.CONJUNTO calculá el total de cajas pedidas por medida.",
 ];
 
+type Categoria = { clave: string; nombre: string; pts: number; max: number; nivel: string };
 type Resultado = {
   puntaje: number;
-  valoresCorrectos: number;
-  totalValores: number;
-  formulasCorrectas: number;
-  totalFormulas: number;
-  resumenPorGrupo: Record<string, { ok: number; total: number }>;
+  categorias: Categoria[];
   tiempoSegundos: number | null;
   excedido: boolean;
 };
@@ -97,10 +94,9 @@ export default function ExcelTest({
       <main className="mx-auto max-w-2xl p-6">
         <div className="card text-center">
           <p className="text-white/60">Tu puntaje en la Prueba de Excel</p>
-          <p className="my-2 text-5xl font-bold text-indigo-300">{resultado.puntaje}</p>
-          <p className="text-sm text-white/50">
-            Valores correctos: {resultado.valoresCorrectos}/{resultado.totalValores} · Fórmulas usadas:{" "}
-            {resultado.formulasCorrectas}/{resultado.totalFormulas}
+          <p className="my-2 text-5xl font-bold text-indigo-300">
+            {resultado.puntaje}
+            <span className="text-2xl text-white/40"> / 10</span>
           </p>
           {resultado.tiempoSegundos !== null && (
             <p className={`mt-2 text-sm ${resultado.excedido ? "text-red-300" : "text-white/50"}`}>
@@ -110,13 +106,15 @@ export default function ExcelTest({
           )}
         </div>
         <div className="card mt-4">
-          <h3 className="mb-3 font-semibold">Detalle por bloque</h3>
+          <h3 className="mb-3 font-semibold">Detalle por fórmula</h3>
           <ul className="space-y-1 text-sm">
-            {Object.entries(resultado.resumenPorGrupo).map(([g, v]) => (
-              <li key={g} className="flex justify-between border-b border-white/5 py-1">
-                <span className="text-white/70">{g}</span>
-                <span className={v.ok === v.total ? "text-emerald-300" : "text-amber-300"}>
-                  {v.ok}/{v.total}
+            {resultado.categorias.map((c) => (
+              <li key={c.clave} className="flex items-center justify-between gap-3 border-b border-white/5 py-1">
+                <span className="text-white/70">
+                  {c.nombre} <span className="text-white/40">— {c.nivel}</span>
+                </span>
+                <span className={c.pts === c.max ? "text-emerald-300" : c.pts > 0 ? "text-amber-300" : "text-red-300"}>
+                  {c.pts}/{c.max}
                 </span>
               </li>
             ))}

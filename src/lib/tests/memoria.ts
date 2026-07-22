@@ -159,8 +159,66 @@ export interface CorreccionPregunta {
 }
 
 export interface ResultadoMemoria {
-  puntaje: number; // 0..100
+  puntaje: number; // 0..10
   preguntas: CorreccionPregunta[];
+}
+
+const PESO_PREGUNTA = 2; // 2 puntos por pregunta (5 preguntas = 10)
+
+/**
+ * Corrección por pregunta (0, 1 o 2 puntos).
+ * Regla general (RRHH): si dan solo el dato/cantidad sin el detalle → 1 punto;
+ * con el detalle correcto → 2; nada correcto → 0.
+ */
+function corregir(id: string, resp: string): { puntos: number; detalle: string } {
+  const n = norm(resp);
+  const tiene = (...ks: string[]) => ks.some((k) => n.includes(norm(k)));
+  const num = extraerNumero(resp);
+
+  if (id === "q1") {
+    // 3 tipos: Insumos, Artículos Terminados, Talleristas Virgilio
+    let nombres = 0;
+    if (tiene("insumo")) nombres++;
+    if (tiene("termina")) nombres++; // artículos terminados
+    if (tiene("tallerista", "virgilio")) nombres++;
+    if (nombres >= 3) return { puntos: 2, detalle: `Nombró los 3 tipos.` };
+    if (num === 3 || nombres >= 1) return { puntos: 1, detalle: `Cantidad/parcial (nombró ${nombres}/3).` };
+    return { puntos: 0, detalle: "Incorrecto." };
+  }
+
+  if (id === "q2") {
+    // 7 insumos
+    const grupos = ["flej", "caja", "carton", "bolsa", "parte", "remach", "bombill"];
+    const nombrados = grupos.filter((g) => n.includes(g)).length;
+    if (nombrados >= 6) return { puntos: 2, detalle: `Nombró ${nombrados}/7 insumos.` };
+    if (nombrados >= 1 || num === 7) return { puntos: 1, detalle: `Cantidad/parcial (nombró ${nombrados}/7).` };
+    return { puntos: 0, detalle: "Incorrecto." };
+  }
+
+  if (id === "q3") {
+    // en base a la prioridad
+    if (tiene("priorid")) return { puntos: 2, detalle: "Correcto (prioridad)." };
+    return { puntos: 0, detalle: "No mencionó la prioridad." };
+  }
+
+  if (id === "q4") {
+    // 3 días antes de que se cumpla la fecha de entrega
+    const detalle = tiene("antes", "fecha", "entrega", "cumpl");
+    if (num === 3 && detalle) return { puntos: 2, detalle: "Correcto (3 días, con detalle)." };
+    if (num === 3) return { puntos: 1, detalle: "Solo la cantidad (3), sin detalle." };
+    return { puntos: 0, detalle: "Incorrecto." };
+  }
+
+  if (id === "q5") {
+    // problema con el proceso de producción
+    const problema = tiene("problema", "inconvenient", "surja");
+    const produccion = tiene("produccion", "proceso");
+    if (problema && produccion) return { puntos: 2, detalle: "Correcto (problema en la producción)." };
+    if (problema || produccion) return { puntos: 1, detalle: "Parcial." };
+    return { puntos: 0, detalle: "Incorrecto." };
+  }
+
+  return { puntos: 0, detalle: "" };
 }
 
 export function scoreMemoria(respuestas: Record<string, string>): ResultadoMemoria {
@@ -169,36 +227,10 @@ export function scoreMemoria(respuestas: Record<string, string>): ResultadoMemor
 
   for (const q of MEMORIA_PREGUNTAS) {
     const resp = respuestas[q.id] ?? "";
-    let puntos = 0;
-    let detalle = "";
-
-    if (q.tipo === "numero") {
-      const n = extraerNumero(resp);
-      if (n === q.numero) {
-        puntos = q.peso;
-        detalle = `Correcto (${q.numero}).`;
-      } else {
-        detalle = `Esperado ${q.numero}, respondió "${resp}".`;
-      }
-    } else if (q.tipo === "keywords") {
-      const n = norm(resp);
-      const grupos = q.keywords ?? [];
-      const gruposOk = grupos.filter((alts) => alts.some((k) => n.includes(norm(k))));
-      const frac = grupos.length > 0 ? gruposOk.length / grupos.length : 0;
-      puntos = Math.round(q.peso * frac);
-      detalle = `${gruposOk.length}/${grupos.length} conceptos clave presentes.`;
-    } else if (q.tipo === "lista") {
-      const n = norm(resp);
-      const items = q.items ?? [];
-      const nombrados = items.filter((it) => n.includes(norm(it)));
-      const frac = items.length > 0 ? nombrados.length / items.length : 0;
-      puntos = Math.round(q.peso * frac);
-      detalle = `Nombró ${nombrados.length}/${items.length}: ${nombrados.join(", ") || "—"}.`;
-    }
-
+    const { puntos, detalle } = corregir(q.id, resp);
     total += puntos;
-    preguntas.push({ id: q.id, texto: q.texto, respuesta: resp, puntos, peso: q.peso, detalle });
+    preguntas.push({ id: q.id, texto: q.texto, respuesta: resp, puntos, peso: PESO_PREGUNTA, detalle });
   }
 
-  return { puntaje: Math.round(total), preguntas };
+  return { puntaje: total, preguntas };
 }

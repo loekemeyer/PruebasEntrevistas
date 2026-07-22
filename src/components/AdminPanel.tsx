@@ -25,11 +25,12 @@ type Candidato = {
 const TIPOS: Resultado["tipo"][] = ["excel", "tipeo", "memoria"];
 const NOMBRE_TIPO: Record<string, string> = { excel: "Excel", tipeo: "Tipeo", memoria: "Memoria" };
 
+// Puntajes en base 10.
 function color(p: number | null): string {
   if (p === null) return "bg-white/10 text-white/50";
-  if (p >= 70) return "bg-emerald-500/20 text-emerald-300";
-  if (p >= 40) return "bg-amber-500/20 text-amber-300";
-  return "bg-red-500/20 text-red-300";
+  if (p >= 7) return "bg-emerald-500/30 text-emerald-200";
+  if (p >= 4) return "bg-amber-500/30 text-amber-200";
+  return "bg-red-500/30 text-red-200";
 }
 
 export default function AdminPanel({
@@ -73,14 +74,24 @@ export default function AdminPanel({
     }
   }
 
-  async function copiar(c: Candidato) {
-    const texto =
-      `Prueba de selección\n` +
+  function mensaje(c: Candidato) {
+    return (
+      `Hola ${c.nombre.split(" ")[0]}, te enviamos el acceso a las pruebas de selección.\n\n` +
       `Link: ${linkDe(c)}\n` +
-      `Código: ${c.codigo ?? "—"}`;
-    await navigator.clipboard.writeText(texto);
+      `Código de acceso (6 dígitos): ${c.codigo ?? "—"}\n\n` +
+      `Entrá al link, ingresá el código y completá las 3 pruebas. ¡Éxitos!`
+    );
+  }
+
+  async function copiar(c: Candidato) {
+    await navigator.clipboard.writeText(mensaje(c));
     setCopiado(c.id);
     setTimeout(() => setCopiado(null), 1500);
+  }
+
+  function whatsapp(c: Candidato) {
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje(c))}`;
+    window.open(url, "_blank");
   }
 
   async function logout() {
@@ -143,7 +154,7 @@ export default function AdminPanel({
               const puntajes = c.resultados.map((r) => r.puntaje ?? 0);
               const total =
                 c.resultados.length > 0
-                  ? Math.round(puntajes.reduce((a, b) => a + b, 0) / c.resultados.length)
+                  ? Math.round((puntajes.reduce((a, b) => a + b, 0) / c.resultados.length) * 10) / 10
                   : null;
               return (
                 <tr key={c.id} className="border-b border-white/5">
@@ -177,9 +188,17 @@ export default function AdminPanel({
                     </span>
                   </td>
                   <td className="py-3 pr-3">
-                    <button onClick={() => copiar(c)} className="btn-ghost px-2 py-1 text-xs">
-                      {copiado === c.id ? "¡Copiado!" : "Copiar link + código"}
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => copiar(c)} className="btn-ghost px-2 py-1 text-xs">
+                        {copiado === c.id ? "¡Copiado!" : "Copiar"}
+                      </button>
+                      <button
+                        onClick={() => whatsapp(c)}
+                        className="btn px-2 py-1 text-xs bg-emerald-600 text-white hover:bg-emerald-500"
+                      >
+                        WhatsApp
+                      </button>
+                    </div>
                   </td>
                   <td className="py-3 text-right">
                     <button
@@ -218,8 +237,11 @@ function DetalleModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4" onClick={onClose}>
-      <div className="card my-8 w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/85 p-4" onClick={onClose}>
+      <div
+        className="my-8 w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0f1725] p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h3 className="text-xl font-bold">{candidato.nombre}</h3>
@@ -249,7 +271,7 @@ function DetalleModal({
             <div key={r.tipo} className="rounded-lg border border-white/10 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h4 className="font-semibold">{NOMBRE_TIPO[r.tipo]}</h4>
-                <span className={`badge ${color(r.puntaje)}`}>{r.puntaje} / 100</span>
+                <span className={`badge ${color(r.puntaje)}`}>{r.puntaje} / 10</span>
               </div>
               <DetallePrueba tipo={r.tipo} detalle={r.detalle} />
             </div>
@@ -349,44 +371,40 @@ function DetallePrueba({ tipo, detalle }: { tipo: string; detalle: any }) {
   }
 
   if (tipo === "excel") {
-    const resumen: Record<string, { ok: number; total: number }> = detalle.resumenPorGrupo ?? {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const items: any[] = detalle.items ?? [];
-    const fallidas = items.filter((it) => !it.valorOk);
+    const categorias: any[] = detalle.categorias ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const celdasMal: any[] = detalle.celdasMal ?? [];
     return (
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Metrica label="Valores" valor={`${detalle.valoresCorrectos}/${detalle.totalValores}`} />
-          <Metrica label="Fórmulas" valor={`${detalle.formulasCorrectas}/${detalle.totalFormulas}`} />
+        <div className="grid grid-cols-2 gap-2">
           <Metrica label="Tiempo" valor={seg2fmt(detalle.tiempoSegundos)} />
           <Metrica label="¿Excedió?" valor={detalle.excedido ? "Sí" : "No"} />
         </div>
 
-        <div>
-          <p className="mb-1 text-xs text-white/50">Por bloque</p>
-          <ul className="space-y-1 text-sm">
-            {Object.entries(resumen).map(([g, v]) => (
-              <li key={g} className="flex justify-between border-b border-white/5 py-1">
-                <span className="text-white/70">{g}</span>
-                <span className={v.ok === v.total ? "text-emerald-300" : "text-amber-300"}>
-                  {v.ok}/{v.total}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ul className="space-y-1 text-sm">
+          {categorias.map((c) => (
+            <li key={c.clave} className="flex items-center justify-between gap-3 border-b border-white/5 py-1">
+              <span className="text-white/70">
+                {c.nombre} <span className="text-white/40">— {c.nivel}</span>
+              </span>
+              <span className={c.pts === c.max ? "text-emerald-300" : c.pts > 0 ? "text-amber-300" : "text-red-300"}>
+                {c.pts}/{c.max}
+              </span>
+            </li>
+          ))}
+        </ul>
 
-        {fallidas.length > 0 && (
+        {celdasMal.length > 0 && (
           <div>
-            <p className="mb-1 text-xs text-white/50">Celdas con error ({fallidas.length})</p>
+            <p className="mb-1 text-xs text-white/50">Celdas con resultado distinto ({celdasMal.length})</p>
             <ul className="space-y-1 text-xs">
-              {fallidas.map((it) => (
-                <li key={it.coord} className="flex justify-between gap-2 rounded bg-black/20 px-2 py-1">
+              {celdasMal.map((it) => (
+                <li key={it.coord} className="flex justify-between gap-2 rounded bg-black/40 px-2 py-1">
                   <span className="font-mono text-white/70">{it.coord}</span>
                   <span className="text-white/50">
                     esperado <b className="text-emerald-300">{String(it.esperado)}</b> · puso{" "}
                     <b className="text-red-300">{String(it.obtenido ?? "—")}</b>
-                    {!it.formulaOk && <span className="text-amber-300"> · sin fórmula</span>}
                   </span>
                 </li>
               ))}
