@@ -247,17 +247,159 @@ function DetalleModal({
         <div className="space-y-4">
           {candidato.resultados.map((r) => (
             <div key={r.tipo} className="rounded-lg border border-white/10 p-4">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between">
                 <h4 className="font-semibold">{NOMBRE_TIPO[r.tipo]}</h4>
                 <span className={`badge ${color(r.puntaje)}`}>{r.puntaje} / 100</span>
               </div>
-              <pre className="max-h-64 overflow-auto rounded bg-black/30 p-3 text-[11px] leading-relaxed text-white/70">
-                {JSON.stringify(r.detalle, null, 2)}
-              </pre>
+              <DetallePrueba tipo={r.tipo} detalle={r.detalle} />
             </div>
           ))}
         </div>
       </div>
     </div>
+  );
+}
+
+function seg2fmt(s: unknown): string {
+  const n = Number(s);
+  if (!Number.isFinite(n)) return "—";
+  const m = Math.floor(n / 60);
+  const r = Math.round(n % 60);
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function Metrica({ label, valor }: { label: string; valor: string | number }) {
+  return (
+    <div className="rounded-lg bg-black/20 p-2 text-center">
+      <div className="text-lg font-bold">{valor}</div>
+      <div className="text-[11px] text-white/50">{label}</div>
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DetallePrueba({ tipo, detalle }: { tipo: string; detalle: any }) {
+  if (!detalle) return <p className="text-sm text-white/40">Sin detalle.</p>;
+
+  if (tipo === "tipeo") {
+    return (
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <Metrica label="PPM neto" valor={detalle.ppmNeto ?? "—"} />
+        <Metrica label="PPM bruto" valor={detalle.ppmBruto ?? "—"} />
+        <Metrica label="Precisión" valor={`${detalle.precision ?? "—"}%`} />
+        <Metrica label="Errores" valor={detalle.errores ?? "—"} />
+        <Metrica label="Correctos" valor={detalle.caracteresCorrectos ?? "—"} />
+        <Metrica label="Tipeados" valor={detalle.caracteresTipeados ?? "—"} />
+        <Metrica label="Segundos" valor={detalle.segundos ?? "—"} />
+      </div>
+    );
+  }
+
+  if (tipo === "memoria") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const preguntas: any[] = detalle.preguntas ?? [];
+    const eventos: Record<string, number> = detalle.eventosSospechosos ?? {};
+    const sospechosos = Object.entries(eventos).filter(([k]) => k !== "estudio_completado");
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="badge bg-white/10 text-white/70">
+            Tiempo total: {seg2fmt(detalle.tiempoTotalSegundos)}
+          </span>
+          {detalle.excedido && (
+            <span className="badge bg-red-500/20 text-red-300">⚠ superó 15 min</span>
+          )}
+        </div>
+        <div className="space-y-2">
+          {preguntas.map((p) => (
+            <div key={p.id} className="rounded-lg bg-black/20 p-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-white/80">{p.texto}</span>
+                <span
+                  className={`badge shrink-0 ${
+                    p.puntos === p.peso
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : p.puntos > 0
+                      ? "bg-amber-500/20 text-amber-300"
+                      : "bg-red-500/20 text-red-300"
+                  }`}
+                >
+                  {p.puntos}/{p.peso}
+                </span>
+              </div>
+              <p className="mt-1 text-white/60">
+                <span className="text-white/40">Respondió:</span> {p.respuesta || "—"}
+              </p>
+              <p className="text-[11px] text-white/40">{p.detalle}</p>
+            </div>
+          ))}
+        </div>
+        {sospechosos.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs text-white/40">Eventos:</span>
+            {sospechosos.map(([k, v]) => (
+              <span key={k} className="badge bg-orange-500/15 text-orange-300">
+                {k} ×{v}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (tipo === "excel") {
+    const resumen: Record<string, { ok: number; total: number }> = detalle.resumenPorGrupo ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const items: any[] = detalle.items ?? [];
+    const fallidas = items.filter((it) => !it.valorOk);
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Metrica label="Valores" valor={`${detalle.valoresCorrectos}/${detalle.totalValores}`} />
+          <Metrica label="Fórmulas" valor={`${detalle.formulasCorrectas}/${detalle.totalFormulas}`} />
+          <Metrica label="Tiempo" valor={seg2fmt(detalle.tiempoSegundos)} />
+          <Metrica label="¿Excedió?" valor={detalle.excedido ? "Sí" : "No"} />
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs text-white/50">Por bloque</p>
+          <ul className="space-y-1 text-sm">
+            {Object.entries(resumen).map(([g, v]) => (
+              <li key={g} className="flex justify-between border-b border-white/5 py-1">
+                <span className="text-white/70">{g}</span>
+                <span className={v.ok === v.total ? "text-emerald-300" : "text-amber-300"}>
+                  {v.ok}/{v.total}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {fallidas.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-white/50">Celdas con error ({fallidas.length})</p>
+            <ul className="space-y-1 text-xs">
+              {fallidas.map((it) => (
+                <li key={it.coord} className="flex justify-between gap-2 rounded bg-black/20 px-2 py-1">
+                  <span className="font-mono text-white/70">{it.coord}</span>
+                  <span className="text-white/50">
+                    esperado <b className="text-emerald-300">{String(it.esperado)}</b> · puso{" "}
+                    <b className="text-red-300">{String(it.obtenido ?? "—")}</b>
+                    {!it.formulaOk && <span className="text-amber-300"> · sin fórmula</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <pre className="max-h-64 overflow-auto rounded bg-black/30 p-3 text-[11px] text-white/70">
+      {JSON.stringify(detalle, null, 2)}
+    </pre>
   );
 }
