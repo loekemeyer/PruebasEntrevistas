@@ -1,17 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-type Resultado = {
-  puntaje: number;
-  ppmBruto: number;
-  ppmNeto: number;
-  precision: number;
-  caracteresCorrectos: number;
-  caracteresTipeados: number;
-  errores: number;
-};
 
 export default function TipeoTest({
   token,
@@ -27,7 +18,8 @@ export default function TipeoTest({
   const [remaining, setRemaining] = useState(segundos);
   const [finished, setFinished] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [enviado, setEnviado] = useState(false);
+  const router = useRouter();
   const startRef = useRef<number>(0);
   const typedRef = useRef("");
 
@@ -43,9 +35,12 @@ export default function TipeoTest({
       });
       const j = await res.json().catch(() => ({}));
       setEnviando(false);
-      if (j.ok) setResultado(j.resultado);
+      if (j.ok) {
+        setEnviado(true);
+        router.refresh();
+      }
     },
-    [token]
+    [token, router]
   );
 
   const terminar = useCallback(() => {
@@ -81,25 +76,13 @@ export default function TipeoTest({
     if (val.length >= texto.length) terminar();
   }
 
-  if (resultado) {
+  if (enviado) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <div className="card text-center">
-          <p className="text-white/60">Tu puntaje en la Prueba de Tipeo</p>
-          <p className="my-2 text-5xl font-bold text-indigo-300">
-            {resultado.puntaje}
-            <span className="text-2xl text-white/40"> / 10</span>
-          </p>
-        </div>
-        <div className="card mt-4 grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
-          <Metrica label="PPM neto" valor={resultado.ppmNeto} />
-          <Metrica label="PPM bruto" valor={resultado.ppmBruto} />
-          <Metrica label="Precisión" valor={`${resultado.precision}%`} />
-          <Metrica label="Errores" valor={resultado.errores} />
-        </div>
-        <div className="mt-6 text-center">
-          <Link href={`/prueba/${token}`} className="btn-primary">Volver a mis pruebas</Link>
-        </div>
+      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="text-5xl">✅</div>
+        <h1 className="text-2xl font-bold">Prueba de Tipeo enviada</h1>
+        <p className="text-white/60">¡Listo! Tu prueba se registró correctamente.</p>
+        <Link href={`/prueba/${token}`} className="btn-primary">Volver a mis pruebas</Link>
       </main>
     );
   }
@@ -157,14 +140,5 @@ export default function TipeoTest({
         </button>
       </div>
     </main>
-  );
-}
-
-function Metrica({ label, valor }: { label: string; valor: string | number }) {
-  return (
-    <div>
-      <div className="text-2xl font-bold">{valor}</div>
-      <div className="text-xs text-white/50">{label}</div>
-    </div>
   );
 }

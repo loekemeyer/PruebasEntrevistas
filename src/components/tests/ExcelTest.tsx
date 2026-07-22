@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+function fmt(seg: number): string {
+  const s = Math.max(0, Math.round(seg));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
 
 const CONSIGNAS = [
   "Ir a la hoja «A resolver»: vas a encontrar el pedido de un cliente (Código, Medida y Cajas pedidas).",
@@ -11,21 +19,6 @@ const CONSIGNAS = [
   "J7 y J8: con +SI definí si el pedido es «Aceptado» o «Rechazado» según los límites de crédito (J4 y J5).",
   "N3:N8: con +SUMAR.SI.CONJUNTO calculá el total de cajas pedidas por medida.",
 ];
-
-type Categoria = { clave: string; nombre: string; pts: number; max: number; nivel: string };
-type Resultado = {
-  puntaje: number;
-  categorias: Categoria[];
-  tiempoSegundos: number | null;
-  excedido: boolean;
-};
-
-function fmt(seg: number): string {
-  const s = Math.max(0, Math.round(seg));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${String(r).padStart(2, "0")}`;
-}
 
 export default function ExcelTest({
   token,
@@ -45,7 +38,8 @@ export default function ExcelTest({
   const [enviando, setEnviando] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [error, setError] = useState("");
-  const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [enviado, setEnviado] = useState(false);
+  const router = useRouter();
   const descargaRef = useRef<HTMLAnchorElement>(null);
 
   // cronómetro
@@ -84,45 +78,20 @@ export default function ExcelTest({
     const res = await fetch(`/api/prueba/${token}/excel/submit`, { method: "POST", body: fd });
     setEnviando(false);
     const j = await res.json().catch(() => ({}));
-    if (res.ok && j.ok) setResultado(j.resultado);
-    else setError(j.error || "No se pudo enviar el archivo.");
+    if (res.ok && j.ok) {
+      setEnviado(true);
+      router.refresh();
+    } else setError(j.error || "No se pudo enviar el archivo.");
   }
 
-  // ===== Resultado =====
-  if (resultado) {
+  // ===== Enviada =====
+  if (enviado) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <div className="card text-center">
-          <p className="text-white/60">Tu puntaje en la Prueba de Excel</p>
-          <p className="my-2 text-5xl font-bold text-indigo-300">
-            {resultado.puntaje}
-            <span className="text-2xl text-white/40"> / 10</span>
-          </p>
-          {resultado.tiempoSegundos !== null && (
-            <p className={`mt-2 text-sm ${resultado.excedido ? "text-red-300" : "text-white/50"}`}>
-              Tiempo: {fmt(resultado.tiempoSegundos)}
-              {resultado.excedido ? " · ⚠ superó el máximo de 25 min" : ""}
-            </p>
-          )}
-        </div>
-        <div className="card mt-4">
-          <h3 className="mb-3 font-semibold">Detalle por fórmula</h3>
-          <ul className="space-y-1 text-sm">
-            {resultado.categorias.map((c) => (
-              <li key={c.clave} className="flex items-center justify-between gap-3 border-b border-white/5 py-1">
-                <span className="text-white/70">
-                  {c.nombre} <span className="text-white/40">— {c.nivel}</span>
-                </span>
-                <span className={c.pts === c.max ? "text-emerald-300" : c.pts > 0 ? "text-amber-300" : "text-red-300"}>
-                  {c.pts}/{c.max}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="mt-6 text-center">
-          <Link href={`/prueba/${token}`} className="btn-primary">Volver a mis pruebas</Link>
-        </div>
+      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="text-5xl">✅</div>
+        <h1 className="text-2xl font-bold">Prueba de Excel enviada</h1>
+        <p className="text-white/60">¡Listo! Tu archivo se recibió y registró correctamente.</p>
+        <Link href={`/prueba/${token}`} className="btn-primary">Volver a mis pruebas</Link>
       </main>
     );
   }

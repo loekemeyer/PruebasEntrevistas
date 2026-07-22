@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 type PreguntaPub = { id: string; texto: string; tipo: "numero" | "keywords" | "lista" };
@@ -9,11 +10,6 @@ type Material = {
   bloques: { subtitulo: string; items: string[] }[];
   seguimiento: string[];
 };
-type Resultado = {
-  puntaje: number;
-  preguntas: { id: string; texto: string; puntos: number; peso: number; detalle: string }[];
-};
-
 function fmt(seg: number): string {
   const s = Math.max(0, Math.round(seg));
   const m = Math.floor(s / 60);
@@ -43,11 +39,10 @@ export default function MemoriaTest({
   const [fase, setFase] = useState<"intro" | "estudio" | "preguntas">("intro");
   const [oculto, setOculto] = useState(false);
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
-  const [resultado, setResultado] = useState<Resultado | null>(null);
-  const [excedido, setExcedido] = useState(false);
-  const [tiempoTotal, setTiempoTotal] = useState<number | null>(null);
+  const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [iniciando, setIniciando] = useState(false);
+  const router = useRouter();
   const [startMs, setStartMs] = useState<number | null>(
     iniciadoAtInicial ? Date.parse(iniciadoAtInicial) : null
   );
@@ -111,24 +106,16 @@ export default function MemoriaTest({
       logEvento("perdio_foco");
     };
     const onFocus = () => setOculto(false);
-    const onFsChange = () => {
-      if (!document.fullscreenElement) {
-        setOculto(true);
-        logEvento("salio_pantalla_completa");
-      }
-    };
 
     window.addEventListener("keydown", onKeyDown);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
-    document.addEventListener("fullscreenchange", onFsChange);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
-      document.removeEventListener("fullscreenchange", onFsChange);
     };
   }, [fase, logEvento]);
 
@@ -138,20 +125,14 @@ export default function MemoriaTest({
     const j = await res.json().catch(() => ({}));
     setIniciando(false);
     if (j?.ok && j.iniciadoAt) setStartMs(Date.parse(j.iniciadoAt));
-    try {
-      await document.documentElement.requestFullscreen?.();
-    } catch {
-      /* algunos navegadores lo rechazan; seguimos igual */
-    }
     inicioRef.current = Date.now();
     setFase("estudio");
     setOculto(false);
   }
 
-  async function irAPreguntas() {
+  function irAPreguntas() {
     const segundos = Math.round((Date.now() - inicioRef.current) / 1000);
     logEvento("estudio_completado", { segundos });
-    if (document.fullscreenElement) await document.exitFullscreen?.().catch(() => {});
     setFase("preguntas");
   }
 
@@ -166,42 +147,19 @@ export default function MemoriaTest({
     const j = await res.json().catch(() => ({}));
     setEnviando(false);
     if (j.ok) {
-      setResultado(j.resultado);
-      setExcedido(!!j.excedido);
-      setTiempoTotal(typeof j.tiempoTotalSegundos === "number" ? j.tiempoTotalSegundos : null);
+      setEnviado(true);
+      router.refresh();
     }
   }
 
-  // ===== Resultado =====
-  if (resultado) {
+  // ===== Enviada =====
+  if (enviado) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <div className="card text-center">
-          <p className="text-white/60">Tu puntaje en la Prueba de Memoria</p>
-          <p className="my-2 text-5xl font-bold text-indigo-300">
-            {resultado.puntaje}
-            <span className="text-2xl text-white/40"> / 10</span>
-          </p>
-          {tiempoTotal !== null && (
-            <p className={`text-sm ${excedido ? "text-red-300" : "text-white/50"}`}>
-              Tiempo total: {fmt(tiempoTotal)}
-              {excedido ? " · ⚠ superó el máximo de 15 min" : ""}
-            </p>
-          )}
-        </div>
-        <div className="card mt-4 space-y-2">
-          {resultado.preguntas.map((p) => (
-            <div key={p.id} className="flex items-start justify-between gap-3 border-b border-white/5 py-2 text-sm">
-              <span className="text-white/70">{p.texto}</span>
-              <span className={p.puntos === p.peso ? "text-emerald-300" : p.puntos > 0 ? "text-amber-300" : "text-red-300"}>
-                {p.puntos}/{p.peso}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-6 text-center">
-          <Link href={`/prueba/${token}`} className="btn-primary">Volver a mis pruebas</Link>
-        </div>
+      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="text-5xl">✅</div>
+        <h1 className="text-2xl font-bold">Prueba de Memoria enviada</h1>
+        <p className="text-white/60">¡Listo! Tus respuestas se registraron correctamente.</p>
+        <Link href={`/prueba/${token}`} className="btn-primary">Volver a mis pruebas</Link>
       </main>
     );
   }
@@ -232,8 +190,8 @@ export default function MemoriaTest({
           <p className="mt-2 text-sm text-amber-100/90">
             El cronómetro <b>arranca cuando tocás «Empezar»</b> y cubre el estudio y las preguntas
             (sugerido: dedicale ~{tiempoSugeridoMin} min al estudio). Si te pasás, igual podés
-            terminar pero queda registrado. El material <b>no se puede copiar ni seleccionar</b>;
-            se pide pantalla completa y se registran los cambios de pestaña o intentos de captura.
+            terminar pero queda registrado. El material <b>no se puede copiar ni seleccionar</b> y
+            se registran los cambios de pestaña o intentos de captura.
           </p>
         </div>
 
