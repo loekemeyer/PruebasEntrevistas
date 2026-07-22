@@ -9,6 +9,7 @@ export interface Candidato {
   email: string | null;
   sector: string | null;
   token: string;
+  codigo: string | null;
   estado: string;
   created_at: string;
 }
@@ -28,8 +29,13 @@ export interface Resultado {
 }
 
 export function nuevoToken(): string {
-  // URL-safe, corto pero difícil de adivinar
-  return crypto.randomBytes(9).toString("base64url");
+  // URL-safe, largo y difícil de adivinar (es la credencial fuerte del link)
+  return crypto.randomBytes(24).toString("hex");
+}
+
+export function nuevoCodigo(): string {
+  // código de 6 dígitos (segundo factor, se pasa junto al link)
+  return String(crypto.randomInt(100000, 1000000));
 }
 
 export async function crearCandidato(input: {
@@ -39,6 +45,7 @@ export async function crearCandidato(input: {
 }): Promise<Candidato> {
   const supabase = getSupabaseAdmin();
   const token = nuevoToken();
+  const codigo = nuevoCodigo();
   const { data, error } = await supabase
     .from("pe_candidatos")
     .insert({
@@ -46,6 +53,7 @@ export async function crearCandidato(input: {
       email: input.email ?? null,
       sector: input.sector ?? null,
       token,
+      codigo,
     })
     .select("*")
     .single();

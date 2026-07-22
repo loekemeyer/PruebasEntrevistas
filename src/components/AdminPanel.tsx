@@ -16,6 +16,7 @@ type Candidato = {
   email: string | null;
   sector: string | null;
   token: string;
+  codigo: string | null;
   estado: string;
   created_at: string;
   resultados: Resultado[];
@@ -73,7 +74,11 @@ export default function AdminPanel({
   }
 
   async function copiar(c: Candidato) {
-    await navigator.clipboard.writeText(linkDe(c));
+    const texto =
+      `Prueba de selección\n` +
+      `Link: ${linkDe(c)}\n` +
+      `Código: ${c.codigo ?? "—"}`;
+    await navigator.clipboard.writeText(texto);
     setCopiado(c.id);
     setTimeout(() => setCopiado(null), 1500);
   }
@@ -127,7 +132,8 @@ export default function AdminPanel({
                 <th key={t} className="py-2 pr-3 text-center">{NOMBRE_TIPO[t]}</th>
               ))}
               <th className="py-2 pr-3 text-center">Total</th>
-              <th className="py-2 pr-3">Link</th>
+              <th className="py-2 pr-3 text-center">Código</th>
+              <th className="py-2 pr-3">Acceso</th>
               <th className="py-2"></th>
             </tr>
           </thead>
@@ -165,9 +171,14 @@ export default function AdminPanel({
                       <span className="text-white/25">·</span>
                     )}
                   </td>
+                  <td className="py-3 pr-3 text-center">
+                    <span className="font-mono text-sm tracking-widest text-white/80">
+                      {c.codigo ?? "—"}
+                    </span>
+                  </td>
                   <td className="py-3 pr-3">
                     <button onClick={() => copiar(c)} className="btn-ghost px-2 py-1 text-xs">
-                      {copiado === c.id ? "¡Copiado!" : "Copiar link"}
+                      {copiado === c.id ? "¡Copiado!" : "Copiar link + código"}
                     </button>
                   </td>
                   <td className="py-3 text-right">
@@ -183,7 +194,7 @@ export default function AdminPanel({
             })}
             {candidatos.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-white/40">
+                <td colSpan={9} className="py-8 text-center text-white/40">
                   Todavía no hay candidatos. Creá uno arriba.
                 </td>
               </tr>
@@ -219,8 +230,14 @@ function DetalleModal({
           <button onClick={onClose} className="btn-ghost px-3 py-1 text-sm">Cerrar</button>
         </div>
 
-        <div className="mb-4 rounded-lg bg-black/20 p-3 text-xs text-white/60 break-all">
-          {link}
+        <div className="mb-4 space-y-1 rounded-lg bg-black/20 p-3 text-xs text-white/60">
+          <div className="break-all">
+            <span className="text-white/40">Link:</span> {link}
+          </div>
+          <div>
+            <span className="text-white/40">Código:</span>{" "}
+            <span className="font-mono tracking-widest text-white/80">{candidato.codigo ?? "—"}</span>
+          </div>
         </div>
 
         {candidato.resultados.length === 0 && (

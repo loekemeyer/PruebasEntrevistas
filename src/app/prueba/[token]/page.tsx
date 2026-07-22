@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getCandidatoPorToken, getResultados } from "@/lib/db";
+import { tieneAcceso } from "@/lib/acceso";
+import AccesoCodigo from "@/components/tests/AccesoCodigo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,11 @@ export default async function PruebaHub({ params }: { params: { token: string } 
       </main>
     );
   }
+  // Segundo factor: código de 6 dígitos
+  if (!tieneAcceso(params.token, cand.id)) {
+    return <AccesoCodigo token={params.token} nombre={cand.nombre} />;
+  }
+
   const resultados = await getResultados(cand.id);
   const hechas = new Set(resultados.filter((r) => r.estado === "completada").map((r) => r.tipo));
 

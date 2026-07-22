@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { getCandidatoPorToken, yaCompletada, getResultado } from "@/lib/db";
+import { tieneAcceso } from "@/lib/acceso";
 import MemoriaTest from "@/components/tests/MemoriaTest";
 import YaEnviada from "@/components/tests/YaEnviada";
 import {
@@ -13,6 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function MemoriaPage({ params }: { params: { token: string } }) {
   const cand = await getCandidatoPorToken(params.token);
   if (!cand) return <YaEnviada token={params.token} titulo="Link inválido" invalido />;
+  if (!tieneAcceso(params.token, cand.id)) redirect(`/prueba/${params.token}`);
   if (await yaCompletada(cand.id, "memoria"))
     return <YaEnviada token={params.token} titulo="Prueba de Memoria" />;
 
