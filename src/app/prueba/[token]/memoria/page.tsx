@@ -4,7 +4,7 @@ import { tieneAcceso } from "@/lib/acceso";
 import MemoriaTest from "@/components/tests/MemoriaTest";
 import YaEnviada from "@/components/tests/YaEnviada";
 import {
-  MEMORIA_TEXTO_ESTUDIO,
+  MEMORIA_MATERIAL,
   MEMORIA_PREGUNTAS,
   MEMORIA_TIEMPO_SUGERIDO_MIN,
   MEMORIA_LIMITE_SEGUNDOS,
@@ -28,7 +28,7 @@ export default async function MemoriaPage({ params }: { params: { token: string 
       token={params.token}
       nombre={cand.nombre}
       email={cand.email || ""}
-      textoEstudio={MEMORIA_TEXTO_ESTUDIO}
+      material={MEMORIA_MATERIAL}
       preguntas={preguntas}
       tiempoSugeridoMin={MEMORIA_TIEMPO_SUGERIDO_MIN}
       limiteSegundos={MEMORIA_LIMITE_SEGUNDOS}

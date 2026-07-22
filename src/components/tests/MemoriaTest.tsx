@@ -4,13 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type PreguntaPub = { id: string; texto: string; tipo: "numero" | "keywords" | "lista" };
+type Material = {
+  titulo: string;
+  bloques: { subtitulo: string; items: string[] }[];
+  seguimiento: string[];
+};
 type Resultado = {
   puntaje: number;
   preguntas: { id: string; texto: string; puntos: number; peso: number; detalle: string }[];
 };
-
-// Cuántas letras se revelan por delante de la posición correcta actual.
-const LOOKAHEAD = 14;
 
 function fmt(seg: number): string {
   const s = Math.max(0, Math.round(seg));
@@ -23,7 +25,7 @@ export default function MemoriaTest({
   token,
   nombre,
   email,
-  textoEstudio,
+  material,
   preguntas,
   tiempoSugeridoMin,
   limiteSegundos,
@@ -32,16 +34,14 @@ export default function MemoriaTest({
   token: string;
   nombre: string;
   email: string;
-  textoEstudio: string;
+  material: Material;
   preguntas: PreguntaPub[];
   tiempoSugeridoMin: number;
   limiteSegundos: number;
   iniciadoAtInicial: string | null;
 }) {
   const [fase, setFase] = useState<"intro" | "estudio" | "preguntas">("intro");
-  const [typed, setTyped] = useState("");
   const [oculto, setOculto] = useState(false);
-  const [errores, setErrores] = useState(0);
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [excedido, setExcedido] = useState(false);
@@ -53,7 +53,6 @@ export default function MemoriaTest({
   );
   const [restante, setRestante] = useState(limiteSegundos);
   const inicioRef = useRef(0);
-  const areaRef = useRef<HTMLTextAreaElement>(null);
 
   // cronómetro (arranca al empezar; persiste en la DB vía iniciado_at)
   useEffect(() => {
@@ -76,15 +75,6 @@ export default function MemoriaTest({
     [token]
   );
 
-  // largo del prefijo correcto tipeado
-  const matching = (() => {
-    let n = 0;
-    while (n < typed.length && n < textoEstudio.length && typed[n] === textoEstudio[n]) n++;
-    return n;
-  })();
-  const completo = matching >= textoEstudio.length;
-  const revelado = Math.min(textoEstudio.length, matching + LOOKAHEAD);
-
   // ===== Anti-copia (solo durante el estudio) =====
   useEffect(() => {
     if (fase !== "estudio") return;
@@ -98,7 +88,6 @@ export default function MemoriaTest({
         setOculto(true);
         setTimeout(() => setOculto(false), 1200);
       }
-      // Atajos de copia / guardar / imprimir / devtools
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && ["c", "x", "s", "p", "u"].includes(k.toLowerCase())) {
         e.preventDefault();
@@ -145,7 +134,6 @@ export default function MemoriaTest({
 
   async function empezarEstudio() {
     setIniciando(true);
-    // marca/lee el inicio en la DB (cronómetro no reseteable)
     const res = await fetch(`/api/prueba/${token}/memoria/iniciar`, { method: "POST" });
     const j = await res.json().catch(() => ({}));
     setIniciando(false);
@@ -158,22 +146,11 @@ export default function MemoriaTest({
     inicioRef.current = Date.now();
     setFase("estudio");
     setOculto(false);
-    setTimeout(() => areaRef.current?.focus(), 100);
-  }
-
-  function onType(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const val = e.target.value;
-    // contar error: si el último caracter agregado no coincide en su posición
-    if (val.length > typed.length) {
-      const i = val.length - 1;
-      if (val[i] !== textoEstudio[i]) setErrores((n) => n + 1);
-    }
-    setTyped(val);
   }
 
   async function irAPreguntas() {
     const segundos = Math.round((Date.now() - inicioRef.current) / 1000);
-    logEvento("estudio_completado", { segundos, errores });
+    logEvento("estudio_completado", { segundos });
     if (document.fullscreenElement) await document.exitFullscreen?.().catch(() => {});
     setFase("preguntas");
   }
@@ -184,7 +161,7 @@ export default function MemoriaTest({
     const res = await fetch(`/api/prueba/${token}/memoria/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ respuestas, segundosEstudio, errores }),
+      body: JSON.stringify({ respuestas, segundosEstudio }),
     });
     const j = await res.json().catch(() => ({}));
     setEnviando(false);
@@ -236,11 +213,10 @@ export default function MemoriaTest({
           <p>Esta prueba tiene dos partes:</p>
           <ol className="list-decimal space-y-2 pl-5">
             <li>
-              <b>Estudio:</b> vas a <b>leer y tipear</b> un texto. Se revela de a poco a medida que
-              escribís.
+              <b>Estudio:</b> vas a ver un texto para <b>leer y memorizar</b>. Estudialo con atención.
             </li>
             <li>
-              <b>Preguntas:</b> cuando termines de tipear el texto, pasás a responder {preguntas.length} preguntas.
+              <b>Preguntas:</b> cuando toques «Continuar», pasás a responder {preguntas.length} preguntas.
               <b> No vas a poder volver al material.</b>
             </li>
           </ol>
@@ -251,10 +227,10 @@ export default function MemoriaTest({
             ⏱ Tiempo máximo: 15 minutos
           </h2>
           <p className="mt-2 text-sm text-amber-100/90">
-            El cronómetro <b>arranca cuando tocás «Empezar»</b> y cubre el estudio y las preguntas.
-            Si te pasás, igual podés terminar pero queda registrado que superaste el tiempo.
-            El material no se puede copiar ni seleccionar; se pide pantalla completa y se registran
-            los cambios de pestaña o intentos de captura.
+            El cronómetro <b>arranca cuando tocás «Empezar»</b> y cubre el estudio y las preguntas
+            (sugerido: dedicale ~{tiempoSugeridoMin} min al estudio). Si te pasás, igual podés
+            terminar pero queda registrado. El material <b>no se puede copiar ni seleccionar</b>;
+            se pide pantalla completa y se registran los cambios de pestaña o intentos de captura.
           </p>
         </div>
 
@@ -265,7 +241,7 @@ export default function MemoriaTest({
     );
   }
 
-  // ===== Estudio (tipeo con revelado) =====
+  // ===== Estudio (texto completo, anti-copia) =====
   if (fase === "estudio") {
     return (
       <main
@@ -277,43 +253,44 @@ export default function MemoriaTest({
       >
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Estudio</h1>
-          <div className="flex items-center gap-3">
-            <span className="badge bg-white/10 text-white/60">
-              {Math.round((matching / textoEstudio.length) * 100)}%
-            </span>
-            <span
-              className={`font-mono text-xl font-bold ${
-                restante <= 0 ? "text-red-400" : restante <= 120 ? "text-amber-300" : "text-white"
-              }`}
-            >
-              {fmt(restante)}
-            </span>
-          </div>
+          <span
+            className={`font-mono text-xl font-bold ${
+              restante <= 0 ? "text-red-400" : restante <= 120 ? "text-amber-300" : "text-white"
+            }`}
+          >
+            {fmt(restante)}
+          </span>
         </div>
         <p className="mt-2 text-sm text-white/60">
-          Leé y tipeá el texto. Podés borrar para corregir. Se revela a medida que avanzás.
+          Leé y memorizá el texto. Cuando estés listo, tocá «Continuar a las preguntas».
         </p>
 
-        {/* Área de texto revelado (no seleccionable) */}
         <div className="relative mt-4">
-          <div className="card select-none whitespace-pre-wrap font-mono text-lg leading-relaxed">
-            {textoEstudio.split("").map((ch, i) => {
-              if (i >= revelado) return null;
-              let cls = "text-white/45";
-              if (i < typed.length) cls = typed[i] === ch ? "text-emerald-300" : "bg-red-500/40 text-red-200";
-              else if (i === typed.length) cls = "bg-indigo-400/50 text-white";
-              return (
-                <span key={i} className={cls}>
-                  {ch}
-                </span>
-              );
-            })}
-            {revelado < textoEstudio.length && <span className="text-white/20"> ▓▓▓…</span>}
+          {/* Material (no seleccionable) */}
+          <div className="card select-none space-y-5 text-[15px] leading-relaxed">
+            <h2 className="text-xl font-bold text-indigo-200">{material.titulo}</h2>
+
+            {material.bloques.map((b) => (
+              <div key={b.subtitulo}>
+                <h3 className="font-semibold text-white/90">{b.subtitulo}:</h3>
+                <ul className="mt-1 list-disc pl-6 text-white/80">
+                  {b.items.map((it) => (
+                    <li key={it}>{it}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+
+            <div className="space-y-2 border-t border-white/10 pt-4 text-white/80">
+              {material.seguimiento.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
 
             {/* Watermark tileado con datos del candidato */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.06]">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.05]">
               <div className="flex h-full w-full flex-wrap gap-6 rotate-[-20deg] text-xs">
-                {Array.from({ length: 60 }).map((_, i) => (
+                {Array.from({ length: 80 }).map((_, i) => (
                   <span key={i} className="whitespace-nowrap">
                     {nombre} · {email || "candidato"}
                   </span>
@@ -331,25 +308,9 @@ export default function MemoriaTest({
           )}
         </div>
 
-        <textarea
-          ref={areaRef}
-          value={typed}
-          onChange={onType}
-          onPaste={(e) => {
-            e.preventDefault();
-            logEvento("pegar_bloqueado");
-          }}
-          rows={4}
-          spellCheck={false}
-          autoComplete="off"
-          className="input mt-4 font-mono"
-          placeholder="Tipeá acá lo que vas leyendo…"
-        />
-
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-white/40">Errores de tipeo: {errores}</span>
-          <button onClick={irAPreguntas} disabled={!completo} className="btn-primary">
-            {completo ? "Continuar a las preguntas →" : "Terminá de tipear el texto"}
+        <div className="mt-4 flex justify-end">
+          <button onClick={irAPreguntas} className="btn-primary">
+            Continuar a las preguntas →
           </button>
         </div>
       </main>
