@@ -43,7 +43,6 @@ export default function AdminPanel({
   const router = useRouter();
   const [candidatos, setCandidatos] = useState<Candidato[]>(candidatosInicial);
   const [nombre, setNombre] = useState("");
-  const [email, setEmail] = useState("");
   const [sector, setSector] = useState("");
   const [creando, setCreando] = useState(false);
   const [detalle, setDetalle] = useState<Candidato | null>(null);
@@ -62,14 +61,13 @@ export default function AdminPanel({
     const res = await fetch("/api/admin/candidatos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, email, sector }),
+      body: JSON.stringify({ nombre, sector }),
     });
     setCreando(false);
     if (res.ok) {
       const j = await res.json();
       setCandidatos((prev) => [{ ...j.candidato, resultados: [] }, ...prev]);
       setNombre("");
-      setEmail("");
       setSector("");
     }
   }
@@ -106,14 +104,10 @@ export default function AdminPanel({
 
       <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Nuevo candidato</h2>
-        <form onSubmit={crear} className="grid gap-3 sm:grid-cols-4">
+        <form onSubmit={crear} className="grid gap-3 sm:grid-cols-3">
           <div className="sm:col-span-1">
             <label className="label">Nombre y apellido *</label>
             <input className="input" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-          </div>
-          <div className="sm:col-span-1">
-            <label className="label">Email</label>
-            <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="sm:col-span-1">
             <label className="label">Sector a postularse</label>
