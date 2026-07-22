@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Resultado = {
   tipo: "excel" | "tipeo" | "memoria";
@@ -40,7 +39,6 @@ export default function AdminPanel({
   candidatosInicial: Candidato[];
   baseUrl: string;
 }) {
-  const router = useRouter();
   const [candidatos, setCandidatos] = useState<Candidato[]>(candidatosInicial);
   const [nombre, setNombre] = useState("");
   const [sector, setSector] = useState("");
@@ -89,8 +87,8 @@ export default function AdminPanel({
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin/login");
-    router.refresh();
+    // navegación dura para no dejar una versión cacheada del panel
+    window.location.assign("/admin/login");
   }
 
   return (

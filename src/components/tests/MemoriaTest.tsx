@@ -37,7 +37,20 @@ export default function MemoriaTest({
   iniciadoAtInicial: string | null;
 }) {
   const [fase, setFase] = useState<"intro" | "estudio" | "preguntas">("intro");
+  const [pagina, setPagina] = useState(0);
   const [oculto, setOculto] = useState(false);
+
+  // El material se estudia por bloques: cada bloque en su propia "página", y el
+  // seguimiento al final. Así ninguna captura/foto tiene todo el texto junto.
+  const paginas: { titulo: string | null; bloques: Material["bloques"]; seguimiento: string[] }[] = [
+    ...material.bloques.map((b, i) => ({
+      titulo: i === 0 ? material.titulo : null,
+      bloques: [b],
+      seguimiento: [] as string[],
+    })),
+    { titulo: null, bloques: [] as Material["bloques"], seguimiento: material.seguimiento },
+  ];
+  const esUltima = pagina >= paginas.length - 1;
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -74,23 +87,35 @@ export default function MemoriaTest({
   useEffect(() => {
     if (fase !== "estudio") return;
 
+    let ultimaCaptura = 0;
+    const marcarCaptura = (metodo: string) => {
+      const ahora = Date.now();
+      if (ahora - ultimaCaptura < 500) return; // evita contar doble (keydown+keyup)
+      ultimaCaptura = ahora;
+      navigator.clipboard?.writeText("").catch(() => {});
+      logEvento("captura_pantalla", { metodo });
+      setOculto(true);
+      setTimeout(() => setOculto(false), 1500);
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key;
       const lower = k.toLowerCase();
       const meta = e.metaKey;
       const ctrl = e.ctrlKey || e.metaKey;
 
-      // Intentos de captura de pantalla (el SO igual puede capturar; registramos y avisamos)
-      const esPrintScreen = k === "PrintScreen";
+      // Intentos de captura por atajo (el SO igual puede capturar; registramos y avisamos)
       const esWinRecorte = meta && e.shiftKey && lower === "s"; // Windows: Win+Shift+S (Recorte)
       const esMacShot = meta && e.shiftKey && ["3", "4", "5"].includes(k); // Mac: Cmd+Shift+3/4/5
-      if (esPrintScreen || esWinRecorte || esMacShot) {
+      if (esWinRecorte || esMacShot) {
         e.preventDefault();
-        navigator.clipboard?.writeText("").catch(() => {});
-        const metodo = esPrintScreen ? "PrintScreen" : esWinRecorte ? "Win+Shift+S" : `Cmd+Shift+${k}`;
-        logEvento("captura_pantalla", { metodo });
-        setOculto(true);
-        setTimeout(() => setOculto(false), 1500);
+        marcarCaptura(esWinRecorte ? "Win+Shift+S" : `Cmd+Shift+${k}`);
+        return;
+      }
+      // PrintScreen: algunos navegadores lo reportan acá
+      if (k === "PrintScreen") {
+        e.preventDefault();
+        marcarCaptura("PrintScreen");
         return;
       }
 
@@ -102,6 +127,10 @@ export default function MemoriaTest({
         e.preventDefault();
         logEvento("devtools_intento");
       }
+    };
+    // Chrome/Edge suelen disparar PrintScreen solo en keyup (el SO captura al soltar)
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "PrintScreen") marcarCaptura("PrintScreen");
     };
     const onVisibility = () => {
       if (document.hidden) {
@@ -118,11 +147,13 @@ export default function MemoriaTest({
     const onFocus = () => setOculto(false);
 
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
@@ -233,15 +264,21 @@ export default function MemoriaTest({
           </span>
         </div>
         <p className="mt-2 text-sm text-white/60">
-          Leé y memorizá el texto. Cuando estés listo, tocá «Continuar a las preguntas».
+          Leé y memorizá esta sección. Al tocar «Siguiente» pasás a la próxima y <b>no podés volver</b>.
         </p>
 
-        <div className="relative mt-4">
-          {/* Material (no seleccionable) */}
-          <div className="card select-none space-y-5 text-[15px] leading-relaxed">
-            <h2 className="text-xl font-bold text-indigo-200">{material.titulo}</h2>
+        <div className="mt-3 text-xs font-medium text-white/40">
+          Sección {pagina + 1} de {paginas.length}
+        </div>
 
-            {material.bloques.map((b) => (
+        <div className="relative mt-2">
+          {/* Material del bloque actual (no seleccionable) */}
+          <div className="card select-none space-y-5 text-[15px] leading-relaxed">
+            {paginas[pagina].titulo && (
+              <h2 className="text-xl font-bold text-indigo-200">{paginas[pagina].titulo}</h2>
+            )}
+
+            {paginas[pagina].bloques.map((b) => (
               <div key={b.subtitulo}>
                 <h3 className="font-semibold text-white/90">{b.subtitulo}:</h3>
                 <ul className="mt-1 list-disc pl-6 text-white/80">
@@ -252,25 +289,28 @@ export default function MemoriaTest({
               </div>
             ))}
 
-            <div className="space-y-2 border-t border-white/10 pt-4 text-white/80">
-              {material.seguimiento.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
+            {paginas[pagina].seguimiento.length > 0 && (
+              <div className="space-y-2 text-white/80">
+                <h3 className="font-semibold text-white/90">Seguimiento de fecha de entrega:</h3>
+                {paginas[pagina].seguimiento.map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))}
+              </div>
+            )}
 
             {/* Watermark tileado con datos del candidato */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.05]">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.06]">
               <div className="flex h-full w-full flex-wrap gap-6 rotate-[-20deg] text-xs">
-                {Array.from({ length: 80 }).map((_, i) => (
+                {Array.from({ length: 60 }).map((_, i) => (
                   <span key={i} className="whitespace-nowrap">
-                    {nombre} · {email || "candidato"}
+                    {nombre} · candidato
                   </span>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Overlay que tapa el material si pierde foco / sale de pantalla completa */}
+          {/* Overlay que tapa el material si pierde foco / cambia de pestaña */}
           {oculto && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-black/90 text-center">
               <p className="font-semibold text-red-300">Material oculto</p>
@@ -280,9 +320,15 @@ export default function MemoriaTest({
         </div>
 
         <div className="mt-4 flex justify-end">
-          <button onClick={irAPreguntas} className="btn-primary">
-            Continuar a las preguntas →
-          </button>
+          {esUltima ? (
+            <button onClick={irAPreguntas} className="btn-primary">
+              Continuar a las preguntas →
+            </button>
+          ) : (
+            <button onClick={() => setPagina((p) => p + 1)} className="btn-primary">
+              Siguiente →
+            </button>
+          )}
         </div>
       </main>
     );
