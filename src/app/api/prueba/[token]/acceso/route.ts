@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCandidatoPorToken } from "@/lib/db";
+import { getCandidatoPorToken, iniciarSesion } from "@/lib/db";
 import { codigoValido, setAccesoCookie } from "@/lib/acceso";
 
 export const runtime = "nodejs";
@@ -23,5 +23,6 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
 
   setAccesoCookie(params.token, cand.id);
+  await iniciarSesion(cand.id, cand.sesion_at);
   return NextResponse.json({ ok: true });
 }

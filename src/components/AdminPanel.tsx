@@ -89,11 +89,6 @@ export default function AdminPanel({
     setTimeout(() => setCopiado(null), 1500);
   }
 
-  function whatsapp(c: Candidato) {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje(c))}`;
-    window.open(url, "_blank");
-  }
-
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     router.push("/admin/login");
@@ -188,17 +183,9 @@ export default function AdminPanel({
                     </span>
                   </td>
                   <td className="py-3 pr-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => copiar(c)} className="btn-ghost px-2 py-1 text-xs">
-                        {copiado === c.id ? "¡Copiado!" : "Copiar"}
-                      </button>
-                      <button
-                        onClick={() => whatsapp(c)}
-                        className="btn px-2 py-1 text-xs bg-emerald-600 text-white hover:bg-emerald-500"
-                      >
-                        WhatsApp
-                      </button>
-                    </div>
+                    <button onClick={() => copiar(c)} className="btn-ghost px-2 py-1 text-xs">
+                      {copiado === c.id ? "¡Copiado!" : "Copiar link + código"}
+                    </button>
                   </td>
                   <td className="py-3 text-right">
                     <button
@@ -321,9 +308,24 @@ function DetallePrueba({ tipo, detalle }: { tipo: string; detalle: any }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const preguntas: any[] = detalle.preguntas ?? [];
     const eventos: Record<string, number> = detalle.eventosSospechosos ?? {};
+    const capturas = (eventos["captura_pantalla"] ?? 0) + (eventos["printscreen"] ?? 0);
+    const LABELS: Record<string, string> = {
+      captura_pantalla: "Intentó captura de pantalla",
+      printscreen: "Intentó captura (PrintScreen)",
+      cambio_pestania: "Cambió de pestaña",
+      perdio_foco: "Salió de la ventana",
+      atajo_bloqueado: "Atajo bloqueado (copiar/guardar)",
+      devtools_intento: "Intentó abrir herramientas de desarrollador",
+      pegar_bloqueado: "Intentó pegar",
+    };
     const sospechosos = Object.entries(eventos).filter(([k]) => k !== "estudio_completado");
     return (
       <div className="space-y-3">
+        {capturas > 0 && (
+          <div className="rounded-lg border border-red-500/40 bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-200">
+            📸 Intentó sacar captura de pantalla {capturas} {capturas === 1 ? "vez" : "veces"}
+          </div>
+        )}
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="badge bg-white/10 text-white/70">
             Tiempo total: {seg2fmt(detalle.tiempoTotalSegundos)}
@@ -358,10 +360,10 @@ function DetallePrueba({ tipo, detalle }: { tipo: string; detalle: any }) {
         </div>
         {sospechosos.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-white/40">Eventos:</span>
+            <span className="text-xs text-white/40">Eventos detectados:</span>
             {sospechosos.map(([k, v]) => (
               <span key={k} className="badge bg-orange-500/15 text-orange-300">
-                {k} ×{v}
+                {LABELS[k] ?? k} ×{v}
               </span>
             ))}
           </div>

@@ -2,8 +2,14 @@ import Link from "next/link";
 import { getCandidatoPorToken, getResultados } from "@/lib/db";
 import { tieneAcceso } from "@/lib/acceso";
 import AccesoCodigo from "@/components/tests/AccesoCodigo";
+import ContadorSesion from "@/components/tests/ContadorSesion";
+import { EXCEL_LIMITE_SEGUNDOS } from "@/lib/tests/excel";
+import { TIPEO_SEGUNDOS } from "@/lib/tests/tipeo";
+import { MEMORIA_LIMITE_SEGUNDOS } from "@/lib/tests/memoria";
 
 export const dynamic = "force-dynamic";
+
+const TOTAL_SESION_SEGUNDOS = EXCEL_LIMITE_SEGUNDOS + TIPEO_SEGUNDOS + MEMORIA_LIMITE_SEGUNDOS;
 
 const PRUEBAS = [
   { tipo: "excel", nombre: "Prueba de Excel", desc: "Descargás una planilla, la resolvés con fórmulas y la subís.", tiempo: "~25 min" },
@@ -31,12 +37,17 @@ export default async function PruebaHub({ params }: { params: { token: string } 
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <header className="mb-8 mt-4">
-        <h1 className="text-3xl font-bold">Hola, {cand.nombre.split(" ")[0]} 👋</h1>
-        <p className="mt-2 text-white/60">
-          Tenés 3 pruebas para completar. Podés hacerlas en el orden que quieras. Una vez que
-          enviás una prueba, no se puede rehacer.
-        </p>
+      <header className="mb-8 mt-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Hola, {cand.nombre.split(" ")[0]} 👋</h1>
+          <p className="mt-2 text-white/60">
+            Tenés 3 pruebas para completar. Podés hacerlas en el orden que quieras. Una vez que
+            enviás una prueba, no se puede rehacer.
+          </p>
+        </div>
+        {cand.sesion_at && (
+          <ContadorSesion sesionAt={cand.sesion_at} totalSegundos={TOTAL_SESION_SEGUNDOS} />
+        )}
       </header>
 
       <div className="space-y-4">

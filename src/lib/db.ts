@@ -11,7 +11,17 @@ export interface Candidato {
   token: string;
   codigo: string | null;
   estado: string;
+  sesion_at: string | null;
   created_at: string;
+}
+
+/** Marca el inicio de la sesión (primer ingreso). Devuelve el sesion_at vigente. */
+export async function iniciarSesion(candidatoId: string, actual: string | null): Promise<string> {
+  if (actual) return actual;
+  const supabase = getSupabaseAdmin();
+  const at = new Date().toISOString();
+  await supabase.from("pe_candidatos").update({ sesion_at: at }).eq("id", candidatoId);
+  return at;
 }
 
 export interface Resultado {

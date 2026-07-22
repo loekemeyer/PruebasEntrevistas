@@ -76,19 +76,29 @@ export default function MemoriaTest({
 
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key;
-      // PrintScreen: no se puede impedir la captura del SO, pero limpiamos el portapapeles y registramos.
-      if (k === "PrintScreen") {
-        navigator.clipboard?.writeText("").catch(() => {});
-        logEvento("printscreen");
-        setOculto(true);
-        setTimeout(() => setOculto(false), 1200);
-      }
+      const lower = k.toLowerCase();
+      const meta = e.metaKey;
       const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && ["c", "x", "s", "p", "u"].includes(k.toLowerCase())) {
+
+      // Intentos de captura de pantalla (el SO igual puede capturar; registramos y avisamos)
+      const esPrintScreen = k === "PrintScreen";
+      const esWinRecorte = meta && e.shiftKey && lower === "s"; // Windows: Win+Shift+S (Recorte)
+      const esMacShot = meta && e.shiftKey && ["3", "4", "5"].includes(k); // Mac: Cmd+Shift+3/4/5
+      if (esPrintScreen || esWinRecorte || esMacShot) {
+        e.preventDefault();
+        navigator.clipboard?.writeText("").catch(() => {});
+        const metodo = esPrintScreen ? "PrintScreen" : esWinRecorte ? "Win+Shift+S" : `Cmd+Shift+${k}`;
+        logEvento("captura_pantalla", { metodo });
+        setOculto(true);
+        setTimeout(() => setOculto(false), 1500);
+        return;
+      }
+
+      if (ctrl && ["c", "x", "s", "p", "u"].includes(lower)) {
         e.preventDefault();
         logEvento("atajo_bloqueado", { key: k });
       }
-      if (k === "F12" || (ctrl && e.shiftKey && ["i", "j", "c"].includes(k.toLowerCase()))) {
+      if (k === "F12" || (ctrl && e.shiftKey && ["i", "j", "c"].includes(lower))) {
         e.preventDefault();
         logEvento("devtools_intento");
       }
