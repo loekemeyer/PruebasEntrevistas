@@ -185,7 +185,10 @@ function scoreBuscarv(cells: Record<string, CellData>): Categoria {
   return { ...base, pts: 1, nivel: "Eligió mal el valor buscado (le dio un valor)" };
 }
 
-// ---- +SI (máx 4): total con descuento (J6) + decisión SI (J7/J8) ----
+// ---- +SI (máx 4): decisión SI (J7/J8) con el descuento ----
+// El descuento puede aplicarse en J6 O dentro del SI de J7/J8. Lo que define el
+// puntaje es CÓMO se tomó el descuento (celda J3 = 4, manual = 2, sin descuento = 1).
+// Usamos el resultado de J7/J8 para confirmar que efectivamente se aplicó.
 function scoreSi(cells: Record<string, CellData>): Categoria {
   const c = (co: string) => cells[co] ?? { value: null, formula: null };
   const j6f = limpiar(c("J6").formula);
@@ -196,13 +199,27 @@ function scoreSi(cells: Record<string, CellData>): Categoria {
   const siPresent = /IF\s*\(/i.test(j7f) || /IF\s*\(/i.test(j8f);
   if (!siPresent) return { ...base, pts: 0, nivel: "No realizado" };
 
-  const j6v = Number(c("J6").value);
-  const refJ3 = /J\$?3/i.test(j6f) || /J\$?3/i.test(j7f) || /J\$?3/i.test(j8f);
-  const descAplicado = Number.isFinite(j6v) && Math.abs(j6v - TOTAL_CON_DESCUENTO) < 1;
-  const sinDesc = Number.isFinite(j6v) && Math.abs(j6v - TOTAL_SIN_DESCUENTO) < 1;
+  // ¿referenció la celda del descuento (J3) en cualquiera de las fórmulas?
+  const refJ3 = [j6f, j7f, j8f].some((f) => /J\$?3(?![0-9])/i.test(f));
 
-  if (descAplicado && refJ3) return { ...base, pts: 4, nivel: "Descuento tomado con celda" };
-  if (descAplicado && !refJ3) return { ...base, pts: 2, nivel: "Descuento tomado manualmente" };
+  // ¿el descuento quedó efectivamente aplicado? Se confirma por el resultado:
+  // con descuento → J7 = Aceptado y J8 = Rechazado; o J6 = total con descuento.
+  const j6v = Number(c("J6").value);
+  const j7ok = norm(String(c("J7").value ?? "")).includes("acept");
+  const j8ok = norm(String(c("J8").value ?? "")).includes("rechaz");
+  const resultadoConDescuento = j7ok && j8ok;
+  const j6ConDescuento = Number.isFinite(j6v) && Math.abs(j6v - TOTAL_CON_DESCUENTO) < 1;
+  const descuentoAplicado = resultadoConDescuento || j6ConDescuento;
+
+  if (descuentoAplicado) {
+    return refJ3
+      ? { ...base, pts: 4, nivel: "Descuento tomado con celda (J3)" }
+      : { ...base, pts: 2, nivel: "Descuento tomado manualmente" };
+  }
+
+  const sinDesc =
+    (Number.isFinite(j6v) && Math.abs(j6v - TOTAL_SIN_DESCUENTO) < 1) ||
+    norm(String(c("J7").value ?? "")).includes("rechaz");
   if (sinDesc) return { ...base, pts: 1, nivel: "Realizado sin el descuento" };
   return { ...base, pts: 1, nivel: "Realizado con errores" };
 }
