@@ -15,7 +15,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Pruebas de Entrevistas",
-  description: "Sistema de pruebas remotas para candidatos (Excel, Tipeo, Memoria).",
+  description: "Sistema de pruebas remotas para candidatos (Tipeo, Memoria).",
 };
 
 export default function RootLayout({

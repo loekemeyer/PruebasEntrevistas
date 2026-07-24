@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 type Resultado = {
-  tipo: "excel" | "tipeo" | "memoria";
+  tipo: "tipeo" | "memoria";
   puntaje: number | null;
   estado: string;
   detalle: unknown;
@@ -21,8 +21,8 @@ type Candidato = {
   resultados: Resultado[];
 };
 
-const TIPOS: Resultado["tipo"][] = ["excel", "tipeo", "memoria"];
-const NOMBRE_TIPO: Record<string, string> = { excel: "Excel", tipeo: "Tipeo", memoria: "Memoria" };
+const TIPOS: Resultado["tipo"][] = ["tipeo", "memoria"];
+const NOMBRE_TIPO: Record<string, string> = { tipeo: "Tipeo", memoria: "Memoria" };
 
 // Puntajes en base 10.
 function color(p: number | null): string {
@@ -72,8 +72,8 @@ export default function AdminPanel({
 
   function mensaje(c: Candidato) {
     return (
-      `Hola ${c.nombre}, luego de haber evaluado su perfil y la prueba de Excel enviada ` +
-      `anteriormente, queremos notificarte que avanzás en el proceso de selección y para ello ` +
+      `Hola ${c.nombre}, luego de haber evaluado su perfil, queremos notificarte que avanzás ` +
+      `en el proceso de selección y para ello ` +
       `necesitamos que ingreses en el siguiente link y completes las pruebas:\n\n` +
       `${linkDe(c)}\n\n` +
       `Código de acceso: ${c.codigo ?? "—"}`
@@ -359,51 +359,6 @@ function DetallePrueba({ tipo, detalle }: { tipo: string; detalle: any }) {
                 {LABELS[k] ?? k} ×{v}
               </span>
             ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (tipo === "excel") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const categorias: any[] = detalle.categorias ?? [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const celdasMal: any[] = detalle.celdasMal ?? [];
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <Metrica label="Tiempo" valor={seg2fmt(detalle.tiempoSegundos)} />
-          <Metrica label="¿Excedió?" valor={detalle.excedido ? "Sí" : "No"} />
-        </div>
-
-        <ul className="space-y-1 text-sm">
-          {categorias.map((c) => (
-            <li key={c.clave} className="flex items-center justify-between gap-3 border-b border-white/5 py-1">
-              <span className="text-white/70">
-                {c.nombre} <span className="text-white/40">— {c.nivel}</span>
-              </span>
-              <span className={c.pts === c.max ? "text-emerald-300" : c.pts > 0 ? "text-amber-300" : "text-red-300"}>
-                {c.pts}/{c.max}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {celdasMal.length > 0 && (
-          <div>
-            <p className="mb-1 text-xs text-white/50">Celdas con resultado distinto ({celdasMal.length})</p>
-            <ul className="space-y-1 text-xs">
-              {celdasMal.map((it) => (
-                <li key={it.coord} className="flex justify-between gap-2 rounded bg-black/40 px-2 py-1">
-                  <span className="font-mono text-white/70">{it.coord}</span>
-                  <span className="text-white/50">
-                    esperado <b className="text-emerald-300">{String(it.esperado)}</b> · puso{" "}
-                    <b className="text-red-300">{String(it.obtenido ?? "—")}</b>
-                  </span>
-                </li>
-              ))}
-            </ul>
           </div>
         )}
       </div>

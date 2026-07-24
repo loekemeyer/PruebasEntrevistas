@@ -6,12 +6,11 @@ export default function Home() {
       <div>
         <h1 className="text-4xl font-bold tracking-tight">Pruebas de Entrevistas</h1>
         <p className="mt-3 text-white/60">
-          Sistema de evaluación remota de candidatos: Excel, Tipeo y Memoria.
+          Sistema de evaluación remota de candidatos: Tipeo y Memoria.
         </p>
       </div>
-      <div className="grid w-full gap-4 sm:grid-cols-3">
+      <div className="grid w-full gap-4 sm:grid-cols-2">
         {[
-          { t: "Excel", d: "BUSCARV, SUMA, SI y SUMAR.SI.CONJUNTO. Corrección automática." },
           { t: "Tipeo", d: "1 minuto. PPM y precisión." },
           { t: "Memoria", d: "Estudio con anti-copia y 5 preguntas." },
         ].map((x) => (
