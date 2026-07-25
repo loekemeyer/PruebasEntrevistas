@@ -5,7 +5,7 @@ automáticamente**. Cada candidato recibe un **link único** y hace dos pruebas:
 
 | Prueba | Qué mide | Corrección |
 |--------|----------|-----------|
-| **Tipeo** | Velocidad (PPM) y precisión | Automática: réplica local de 1 minuto sobre un texto fijo. |
+| **Tipeo** | Velocidad (PPM) y precisión | Automática: réplica local de 1 minuto sobre un texto fijo. Se hace **2 veces** y se toma el **mejor** intento. |
 | **Memoria** | Retención de un instructivo | El candidato **lee y tipea** el material (se revela letra por letra, no se puede copiar) y luego responde 5 preguntas autocorregidas. |
 
 ## Stack
@@ -64,7 +64,8 @@ recrearlas en otro proyecto, el SQL está en el historial de migraciones de Supa
 
 - **Tipeo (0–100):** PPM neto = (caracteres correctos ÷ 5) ÷ minutos. El puntaje
   escala contra un objetivo (40 PPM = 100%). Se reporta también PPM bruto,
-  precisión y errores.
+  precisión y errores. El candidato hace **2 intentos** y se toma el **mejor**
+  (mayor puntaje; desempate por PPM neto). El detalle guarda ambos intentos.
 - **Memoria (0–100):** 5 preguntas de 20 puntos. Las numéricas exigen el número
   exacto; las abiertas puntúan por conceptos/nombres clave presentes. Se guardan
   las respuestas crudas para revisión manual.

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCandidatoPorToken, guardarResultado, yaCompletada } from "@/lib/db";
-import { scoreTipeo } from "@/lib/tests/tipeo";
+import { scoreTipeo, TIPEO_SEGUNDOS, ResultadoTipeo } from "@/lib/tests/tipeo";
 
 export const runtime = "nodejs";
+
+type Intento = { tipeado: string; segundos: number };
 
 export async function POST(req: Request, { params }: { params: { token: string } }) {
   const cand = await getCandidatoPorToken(params.token);
@@ -12,18 +14,41 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
 
   const body = await req.json().catch(() => null);
-  const tipeado = typeof body?.tipeado === "string" ? body.tipeado : "";
-  const segundos = Number(body?.segundos) || 60;
 
-  const resultado = scoreTipeo({ tipeado, segundos });
+  // Acepta varios intentos (nuevo) o uno solo (compatibilidad).
+  const crudos: Intento[] = Array.isArray(body?.intentos)
+    ? body.intentos
+    : [{ tipeado: body?.tipeado, segundos: body?.segundos }];
+
+  const intentos: Intento[] = crudos.map((it) => ({
+    tipeado: typeof it?.tipeado === "string" ? it.tipeado : "",
+    segundos: Number(it?.segundos) || TIPEO_SEGUNDOS,
+  }));
+
+  // Se puntúa cada intento y nos quedamos con el mejor (mayor puntaje;
+  // desempate por PPM neto = "mejor tiempo").
+  const evaluados = intentos.map((it) => ({ ...it, resultado: scoreTipeo(it) }));
+  const esMejor = (a: ResultadoTipeo, b: ResultadoTipeo) =>
+    b.puntaje > a.puntaje || (b.puntaje === a.puntaje && b.ppmNeto > a.ppmNeto);
+  let mejorIdx = 0;
+  for (let i = 1; i < evaluados.length; i++) {
+    if (esMejor(evaluados[mejorIdx].resultado, evaluados[i].resultado)) mejorIdx = i;
+  }
+  const mejor = evaluados[mejorIdx];
+
+  const detalle = {
+    ...mejor.resultado,
+    intentoElegido: mejorIdx + 1,
+    intentos: evaluados.map((e, i) => ({ intento: i + 1, ...e.resultado })),
+  };
 
   await guardarResultado({
     candidatoId: cand.id,
     tipo: "tipeo",
-    puntaje: resultado.puntaje,
-    detalle: resultado,
-    respuestas: { tipeado, segundos },
+    puntaje: mejor.resultado.puntaje,
+    detalle,
+    respuestas: { intentos },
   });
 
-  return NextResponse.json({ ok: true, resultado });
+  return NextResponse.json({ ok: true, resultado: mejor.resultado });
 }

@@ -4,14 +4,18 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+type Intento = { tipeado: string; segundos: number };
+
 export default function TipeoTest({
   token,
   texto,
   segundos,
+  intentosTotal = 2,
 }: {
   token: string;
   texto: string;
   segundos: number;
+  intentosTotal?: number;
 }) {
   const [typed, setTyped] = useState("");
   const [started, setStarted] = useState(false);
@@ -19,19 +23,22 @@ export default function TipeoTest({
   const [finished, setFinished] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [intento, setIntento] = useState(1); // intento actual (1..intentosTotal)
+  const [intermedio, setIntermedio] = useState(false); // pantalla entre intentos
   const router = useRouter();
   const startRef = useRef<number>(0);
   const typedRef = useRef("");
+  const intentosRef = useRef<Intento[]>([]);
 
   typedRef.current = typed;
 
   const enviar = useCallback(
-    async (elapsed: number) => {
+    async (intentos: Intento[]) => {
       setEnviando(true);
       const res = await fetch(`/api/prueba/${token}/tipeo/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipeado: typedRef.current, segundos: Math.round(elapsed) }),
+        body: JSON.stringify({ intentos }),
       });
       const j = await res.json().catch(() => ({}));
       setEnviando(false);
@@ -47,8 +54,31 @@ export default function TipeoTest({
     if (finished) return;
     setFinished(true);
     const elapsed = started ? (Date.now() - startRef.current) / 1000 : segundos;
-    enviar(Math.min(elapsed, segundos));
-  }, [finished, started, segundos, enviar]);
+    const registro: Intento = {
+      tipeado: typedRef.current,
+      segundos: Math.round(Math.min(elapsed, segundos)),
+    };
+    intentosRef.current = [...intentosRef.current, registro];
+
+    if (intento < intentosTotal) {
+      // Todavía queda al menos un intento: mostramos la pantalla intermedia.
+      setIntermedio(true);
+    } else {
+      // Último intento: se envían todos y el server se queda con el mejor.
+      enviar(intentosRef.current);
+    }
+  }, [finished, started, segundos, intento, intentosTotal, enviar]);
+
+  function siguienteIntento() {
+    setIntento((n) => n + 1);
+    setIntermedio(false);
+    setTyped("");
+    typedRef.current = "";
+    setStarted(false);
+    setFinished(false);
+    setRemaining(segundos);
+    startRef.current = 0;
+  }
 
   // temporizador
   useEffect(() => {
@@ -81,8 +111,32 @@ export default function TipeoTest({
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
         <div className="text-5xl">✅</div>
         <h1 className="text-2xl font-bold">Prueba de Tipeo enviada</h1>
-        <p className="text-white/60">¡Listo! Tu prueba se registró correctamente.</p>
+        <p className="text-white/60">
+          ¡Listo! Registramos tus {intentosTotal} intentos y se tomó el mejor.
+        </p>
         <Link href={`/prueba/${token}`} className="btn-primary">Volver a mis pruebas</Link>
+      </main>
+    );
+  }
+
+  if (intermedio) {
+    const restantes = intentosTotal - intento;
+    return (
+      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="text-5xl">⏱️</div>
+        <h1 className="text-2xl font-bold">
+          Intento {intento} de {intentosTotal} completado
+        </h1>
+        <p className="text-white/60">
+          {restantes === 1
+            ? "Te queda 1 intento más. "
+            : `Te quedan ${restantes} intentos más. `}
+          Se va a tomar el <b className="text-white">mejor</b> de tus {intentosTotal} intentos, así
+          que dá lo mejor.
+        </p>
+        <button onClick={siguienteIntento} disabled={enviando} className="btn-primary">
+          Empezar intento {intento + 1}
+        </button>
       </main>
     );
   }
@@ -97,7 +151,12 @@ export default function TipeoTest({
     <main className="mx-auto max-w-2xl p-6">
       <Link href={`/prueba/${token}`} className="text-sm text-white/50 hover:underline">← Volver</Link>
       <div className="mt-3 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Prueba de Tipeo</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold">Prueba de Tipeo</h1>
+          <span className="badge bg-white/10 text-white/60">
+            Intento {intento} de {intentosTotal}
+          </span>
+        </div>
         <div className={`rounded-lg px-4 py-2 font-mono text-2xl font-bold ${remaining <= 10 ? "text-red-400" : "text-white"}`}>
           {Math.ceil(remaining)}s
         </div>
@@ -106,6 +165,10 @@ export default function TipeoTest({
         Copiá el texto lo más rápido y preciso que puedas. El cronómetro (1 min) arranca cuando
         escribís la primera letra. No se puede pegar.
       </p>
+      <div className="mt-3 rounded-lg border border-indigo-400/30 bg-indigo-400/10 px-3 py-2 text-sm text-indigo-100">
+        Esta prueba se hace <b>{intentosTotal} veces</b>. De tus {intentosTotal} intentos se toma el{" "}
+        <b>mejor</b>, así que si el primero no sale como querés, tenés otra oportunidad.
+      </div>
 
       <div className="card mt-6 select-none text-lg leading-relaxed">
         {texto.split("").map((ch, i) => {
