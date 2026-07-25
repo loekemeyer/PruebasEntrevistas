@@ -308,15 +308,49 @@ function DetallePrueba({ tipo, detalle }: { tipo: string; detalle: any }) {
   if (!detalle) return <p className="text-sm text-white/40">Sin detalle.</p>;
 
   if (tipo === "tipeo") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const intentos: any[] = detalle.intentos ?? [];
+    const elegido: number | undefined = detalle.intentoElegido;
     return (
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        <Metrica label="PPM neto" valor={detalle.ppmNeto ?? "—"} />
-        <Metrica label="PPM bruto" valor={detalle.ppmBruto ?? "—"} />
-        <Metrica label="Precisión" valor={`${detalle.precision ?? "—"}%`} />
-        <Metrica label="Errores" valor={detalle.errores ?? "—"} />
-        <Metrica label="Correctos" valor={detalle.caracteresCorrectos ?? "—"} />
-        <Metrica label="Tipeados" valor={detalle.caracteresTipeados ?? "—"} />
-        <Metrica label="Segundos" valor={detalle.segundos ?? "—"} />
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <Metrica label="PPM neto" valor={detalle.ppmNeto ?? "—"} />
+          <Metrica label="PPM bruto" valor={detalle.ppmBruto ?? "—"} />
+          <Metrica label="Precisión" valor={`${detalle.precision ?? "—"}%`} />
+          <Metrica label="Errores" valor={detalle.errores ?? "—"} />
+          <Metrica label="Correctos" valor={detalle.caracteresCorrectos ?? "—"} />
+          <Metrica label="Tipeados" valor={detalle.caracteresTipeados ?? "—"} />
+          <Metrica label="Segundos" valor={detalle.segundos ?? "—"} />
+        </div>
+
+        {intentos.length > 1 && (
+          <div>
+            <p className="mb-1 text-xs text-white/50">
+              Intentos ({intentos.length}) — se tomó el mejor
+            </p>
+            <ul className="space-y-1 text-xs">
+              {intentos.map((it) => {
+                const esElegido = it.intento === elegido;
+                return (
+                  <li
+                    key={it.intento}
+                    className={`flex items-center justify-between gap-2 rounded px-2 py-1 ${
+                      esElegido ? "bg-emerald-500/15 text-emerald-200" : "bg-black/40 text-white/60"
+                    }`}
+                  >
+                    <span className="font-medium">
+                      Intento {it.intento}
+                      {esElegido && " ✓"}
+                    </span>
+                    <span>
+                      {it.ppmNeto} PPM · {it.precision}% · {it.puntaje}/10
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </div>
     );
   }

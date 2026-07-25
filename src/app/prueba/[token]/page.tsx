@@ -3,15 +3,15 @@ import { getCandidatoPorToken, getResultados } from "@/lib/db";
 import { tieneAcceso } from "@/lib/acceso";
 import AccesoCodigo from "@/components/tests/AccesoCodigo";
 import ContadorSesion from "@/components/tests/ContadorSesion";
-import { TIPEO_SEGUNDOS } from "@/lib/tests/tipeo";
+import { TIPEO_SEGUNDOS, TIPEO_INTENTOS } from "@/lib/tests/tipeo";
 import { MEMORIA_LIMITE_SEGUNDOS } from "@/lib/tests/memoria";
 
 export const dynamic = "force-dynamic";
 
-const TOTAL_SESION_SEGUNDOS = TIPEO_SEGUNDOS + MEMORIA_LIMITE_SEGUNDOS;
+const TOTAL_SESION_SEGUNDOS = TIPEO_SEGUNDOS * TIPEO_INTENTOS + MEMORIA_LIMITE_SEGUNDOS;
 
 const PRUEBAS = [
-  { tipo: "tipeo", nombre: "Prueba de Tipeo", desc: "Copiás un texto durante 1 minuto. Se mide velocidad y precisión.", tiempo: "1 min" },
+  { tipo: "tipeo", nombre: "Prueba de Tipeo", desc: "Copiás un texto durante 1 minuto. La hacés 2 veces y se toma el mejor intento.", tiempo: "2 × 1 min" },
   { tipo: "memoria", nombre: "Prueba de Memoria", desc: "Estudiás un material y después respondés 5 preguntas.", tiempo: "~15 min" },
 ] as const;
 

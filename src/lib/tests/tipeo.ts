@@ -9,6 +9,9 @@
 
 export const TIPEO_SEGUNDOS = 60;
 
+/** Cantidad de intentos que hace el candidato. Se toma el mejor. */
+export const TIPEO_INTENTOS = 2;
+
 export const TIPEO_TEXTO =
   "La organizacion del trabajo dentro de una empresa requiere atencion constante, " +
   "rapidez en la ejecucion y precision en cada tarea realizada. Cada persona debe " +

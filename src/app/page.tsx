@@ -11,7 +11,7 @@ export default function Home() {
       </div>
       <div className="grid w-full gap-4 sm:grid-cols-2">
         {[
-          { t: "Tipeo", d: "1 minuto. PPM y precisión." },
+          { t: "Tipeo", d: "1 minuto, 2 intentos (se toma el mejor). PPM y precisión." },
           { t: "Memoria", d: "Estudio con anti-copia y 5 preguntas." },
         ].map((x) => (
           <div key={x.t} className="card text-left">
