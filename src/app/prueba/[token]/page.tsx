@@ -3,16 +3,14 @@ import { getCandidatoPorToken, getResultados } from "@/lib/db";
 import { tieneAcceso } from "@/lib/acceso";
 import AccesoCodigo from "@/components/tests/AccesoCodigo";
 import ContadorSesion from "@/components/tests/ContadorSesion";
-import { EXCEL_LIMITE_SEGUNDOS } from "@/lib/tests/excel";
 import { TIPEO_SEGUNDOS } from "@/lib/tests/tipeo";
 import { MEMORIA_LIMITE_SEGUNDOS } from "@/lib/tests/memoria";
 
 export const dynamic = "force-dynamic";
 
-const TOTAL_SESION_SEGUNDOS = EXCEL_LIMITE_SEGUNDOS + TIPEO_SEGUNDOS + MEMORIA_LIMITE_SEGUNDOS;
+const TOTAL_SESION_SEGUNDOS = TIPEO_SEGUNDOS + MEMORIA_LIMITE_SEGUNDOS;
 
 const PRUEBAS = [
-  { tipo: "excel", nombre: "Prueba de Excel", desc: "Descargás una planilla, la resolvés con fórmulas y la subís.", tiempo: "~25 min" },
   { tipo: "tipeo", nombre: "Prueba de Tipeo", desc: "Copiás un texto durante 1 minuto. Se mide velocidad y precisión.", tiempo: "1 min" },
   { tipo: "memoria", nombre: "Prueba de Memoria", desc: "Estudiás un material y después respondés 5 preguntas.", tiempo: "~15 min" },
 ] as const;
@@ -41,7 +39,7 @@ export default async function PruebaHub({ params }: { params: { token: string } 
         <div>
           <h1 className="text-3xl font-bold">Hola, {cand.nombre.split(" ")[0]} 👋</h1>
           <p className="mt-2 text-white/60">
-            Tenés 3 pruebas para completar. Podés hacerlas en el orden que quieras. Una vez que
+            Tenés 2 pruebas para completar. Podés hacerlas en el orden que quieras. Una vez que
             enviás una prueba, no se puede rehacer.
           </p>
         </div>
@@ -77,10 +75,10 @@ export default async function PruebaHub({ params }: { params: { token: string } 
         })}
       </div>
 
-      {hechas.size === 3 && (
+      {hechas.size === 2 && (
         <div className="card mt-8 border-emerald-500/30 bg-emerald-500/10 text-center">
           <p className="font-medium text-emerald-200">
-            ¡Completaste las 3 pruebas! Ya podés cerrar esta ventana. Gracias.
+            ¡Completaste las 2 pruebas! Ya podés cerrar esta ventana. Gracias.
           </p>
         </div>
       )}

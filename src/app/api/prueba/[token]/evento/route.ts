@@ -3,7 +3,7 @@ import { getCandidatoPorToken, logEvento, TipoPrueba } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-const TIPOS: TipoPrueba[] = ["excel", "tipeo", "memoria"];
+const TIPOS: TipoPrueba[] = ["tipeo", "memoria"];
 
 export async function POST(req: Request, { params }: { params: { token: string } }) {
   const cand = await getCandidatoPorToken(params.token);

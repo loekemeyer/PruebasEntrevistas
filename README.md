@@ -1,11 +1,10 @@
 # Pruebas de Entrevistas
 
 Sistema web para tomar **pruebas de selección a distancia** y **puntuarlas
-automáticamente**. Cada candidato recibe un **link único** y hace tres pruebas:
+automáticamente**. Cada candidato recibe un **link único** y hace dos pruebas:
 
 | Prueba | Qué mide | Corrección |
 |--------|----------|-----------|
-| **Excel** | BUSCARV, SUMA, SI, SUMAR.SI.CONJUNTO | Automática: descarga una planilla, la resuelve en Excel real y la sube; el server lee valores **y** fórmulas y compara contra la clave. |
 | **Tipeo** | Velocidad (PPM) y precisión | Automática: réplica local de 1 minuto sobre un texto fijo. |
 | **Memoria** | Retención de un instructivo | El candidato **lee y tipea** el material (se revela letra por letra, no se puede copiar) y luego responde 5 preguntas autocorregidas. |
 
@@ -56,16 +55,13 @@ recrearlas en otro proyecto, el SQL está en el historial de migraciones de Supa
 1. Entrás a `/admin` con `ADMIN_PASSWORD`.
 2. Creás un candidato (nombre, email, sector) → se genera su **link único**
    (`/prueba/<token>`). Copiás el link y se lo mandás.
-3. El candidato entra al link y hace las 3 pruebas (en cualquier orden). Una prueba
+3. El candidato entra al link y hace las 2 pruebas (en cualquier orden). Una prueba
    enviada no se puede rehacer.
 4. En el panel ves el puntaje de cada prueba (0–100), el total y el **detalle**
    (desglose por bloque, respuestas crudas, eventos anti-copia).
 
 ## Cómo se puntúa
 
-- **Excel (0–100):** 70% por resultados correctos (29 celdas: E3:E12, F3:F12, J6,
-  J7, J8, N3:N8) y 30% por haber usado la fórmula esperada en cada celda
-  (los `.xlsx` guardan las funciones en inglés: `VLOOKUP`, `SUM`, `IF`, `SUMIFS`).
 - **Tipeo (0–100):** PPM neto = (caracteres correctos ÷ 5) ÷ minutos. El puntaje
   escala contra un objetivo (40 PPM = 100%). Se reporta también PPM bruto,
   precisión y errores.
@@ -119,11 +115,11 @@ src/
     api/                   # rutas server (login, candidatos, submit de cada prueba, eventos)
   components/
     AdminPanel.tsx
-    tests/                 # ExcelTest, TipeoTest, MemoriaTest, YaEnviada
+    tests/                 # TipeoTest, MemoriaTest, YaEnviada
   lib/
     supabase.ts            # cliente service-role (solo server)
     auth.ts                # auth admin (placeholder)
     db.ts                  # acceso a datos
-    tests/                 # excel.ts, tipeo.ts, memoria.ts (+ clave de respuestas)
-material/                  # archivos originales de referencia (vacío, resuelto, docs)
+    tests/                 # tipeo.ts, memoria.ts (+ clave de respuestas)
+material/                  # archivos originales de referencia (docs)
 ```

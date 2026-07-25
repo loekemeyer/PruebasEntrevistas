@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from "./supabase";
 import crypto from "crypto";
 
-export type TipoPrueba = "excel" | "tipeo" | "memoria";
+export type TipoPrueba = "tipeo" | "memoria";
 
 export interface Candidato {
   id: string;
@@ -182,10 +182,10 @@ export async function guardarResultado(input: {
   );
   if (error) throw new Error(error.message);
 
-  // Si ya completó las 3, marcar candidato como completada.
+  // Si ya completó las 2, marcar candidato como completada.
   const res = await getResultados(input.candidatoId);
   const completas = new Set(res.filter((r) => r.estado === "completada").map((r) => r.tipo));
-  const estado = completas.size >= 3 ? "completada" : "en_progreso";
+  const estado = completas.size >= 2 ? "completada" : "en_progreso";
   await supabase.from("pe_candidatos").update({ estado }).eq("id", input.candidatoId);
 }
 
