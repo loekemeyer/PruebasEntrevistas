@@ -86,6 +86,22 @@ export default function AdminPanel({
     setTimeout(() => setCopiado(null), 1500);
   }
 
+  async function eliminar(c: Candidato) {
+    if (
+      !window.confirm(
+        `¿Eliminar a "${c.nombre}" y todos sus resultados?\n\nEsta acción no se puede deshacer.`
+      )
+    )
+      return;
+    const res = await fetch(`/api/admin/candidatos/${c.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setCandidatos((prev) => prev.filter((x) => x.id !== c.id));
+      if (detalle?.id === c.id) setDetalle(null);
+    } else {
+      alert("No se pudo eliminar. Probá de nuevo.");
+    }
+  }
+
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     // navegación dura para no dejar una versión cacheada del panel
@@ -181,12 +197,20 @@ export default function AdminPanel({
                     </button>
                   </td>
                   <td className="py-3 text-right">
-                    <button
-                      onClick={() => setDetalle(c)}
-                      className="text-xs text-indigo-300 hover:underline"
-                    >
-                      Ver detalle
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => setDetalle(c)}
+                        className="text-xs text-indigo-300 hover:underline"
+                      >
+                        Ver detalle
+                      </button>
+                      <button
+                        onClick={() => eliminar(c)}
+                        className="text-xs text-red-300 hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

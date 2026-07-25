@@ -95,6 +95,13 @@ export async function listarCandidatos(): Promise<
   }));
 }
 
+export async function eliminarCandidato(id: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  // borra en cascada resultados y eventos (FK on delete cascade)
+  const { error } = await supabase.from("pe_candidatos").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function getCandidatoPorToken(token: string): Promise<Candidato | null> {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
