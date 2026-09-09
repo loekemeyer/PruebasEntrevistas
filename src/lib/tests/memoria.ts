@@ -202,10 +202,10 @@ function corregir(id: string, resp: string): { puntos: number; detalle: string }
   }
 
   if (id === "q4") {
-    // 3 días antes de que se cumpla la fecha de entrega
-    const detalle = tiene("antes", "fecha", "entrega", "cumpl");
-    if (num === 3 && detalle) return { puntos: 2, detalle: "Correcto (3 días, con detalle)." };
-    if (num === 3) return { puntos: 1, detalle: "Solo la cantidad (3), sin detalle." };
+    // 3 días antes de que se cumpla la fecha de entrega.
+    // El enunciado ya dice "antes de la fecha de entrega": lo único que se evalúa
+    // es el número. "3", "3 dias", "3 dias antes"... valen 2; cualquier otra cosa, 0.
+    if (num === 3) return { puntos: 2, detalle: "Correcto (3 días)." };
     return { puntos: 0, detalle: "Incorrecto." };
   }
 
