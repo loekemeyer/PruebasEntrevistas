@@ -72,10 +72,13 @@ export default function AdminPanel({
 
   function mensaje(c: Candidato) {
     return (
-      `Hola ${c.nombre}, luego de haber evaluado su perfil y la prueba de Excel enviada ` +
-      `anteriormente, queremos notificarte que avanzás en el proceso de selección y para ello ` +
-      `necesitamos que ingreses en el siguiente link y completes las pruebas:\n\n` +
-      `${linkDe(c)}\n\n` +
+      `Hola ${c.nombre},\n` +
+      `Escribo de Loekemeyer Srl\n` +
+      `Luego de haber evaluado su perfil,\n` +
+      `queremos notificarte que avanzás en el proceso de selección\n` +
+      `y para ello necesitamos que ingreses en el siguiente link\n` +
+      `y completes las pruebas:\n\n` +
+      `Link: ${linkDe(c)}\n` +
       `Código de acceso: ${c.codigo ?? "—"}`
     );
   }
