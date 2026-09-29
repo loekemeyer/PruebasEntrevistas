@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Vigilancia from "./Vigilancia";
 
 type Intento = { tipeado: string; segundos: number };
 
@@ -149,6 +150,7 @@ export default function TipeoTest({
 
   return (
     <main className="mx-auto max-w-2xl p-6">
+      <Vigilancia token={token} tipoPrueba="tipeo" />
       <Link href={`/prueba/${token}`} className="text-sm text-white/50 hover:underline">← Volver</Link>
       <div className="mt-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -162,8 +164,8 @@ export default function TipeoTest({
         </div>
       </div>
       <p className="mt-2 text-sm text-white/60">
-        Copiá el texto lo más rápido y preciso que puedas. El cronómetro (1 min) arranca cuando
-        escribís la primera letra. No se puede pegar.
+        Copiá el texto con el teclado de la PC, lo más rápido y preciso que puedas. El cronómetro
+        (1 min) arranca cuando escribís la primera letra. No se puede pegar.
       </p>
       <div className="mt-3 rounded-lg border border-indigo-400/30 bg-indigo-400/10 px-3 py-2 text-sm text-indigo-100">
         Esta prueba se hace <b>{intentosTotal} veces</b>. De tus {intentosTotal} intentos se toma el{" "}

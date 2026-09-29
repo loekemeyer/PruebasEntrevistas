@@ -3,6 +3,7 @@ import { getCandidatoPorToken, getResultados } from "@/lib/db";
 import { tieneAcceso } from "@/lib/acceso";
 import AccesoCodigo from "@/components/tests/AccesoCodigo";
 import ContadorSesion from "@/components/tests/ContadorSesion";
+import Vigilancia from "@/components/tests/Vigilancia";
 import { TIPEO_SEGUNDOS, TIPEO_INTENTOS } from "@/lib/tests/tipeo";
 import { MEMORIA_LIMITE_SEGUNDOS } from "@/lib/tests/memoria";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 const TOTAL_SESION_SEGUNDOS = TIPEO_SEGUNDOS * TIPEO_INTENTOS + MEMORIA_LIMITE_SEGUNDOS;
 
 const PRUEBAS = [
-  { tipo: "tipeo", nombre: "Prueba de Tipeo", desc: "Copiás un texto durante 1 minuto. La hacés 2 veces y se toma el mejor intento.", tiempo: "2 × 1 min" },
+  { tipo: "tipeo", nombre: "Prueba de Tipeo", desc: "Copiás un texto durante 1 minuto con el teclado de la PC. La hacés 2 veces y se toma el mejor intento.", tiempo: "2 × 1 min" },
   { tipo: "memoria", nombre: "Prueba de Memoria", desc: "Estudiás un material y después respondés 5 preguntas.", tiempo: "~15 min" },
 ] as const;
 
@@ -39,10 +40,18 @@ export default async function PruebaHub({ params }: { params: { token: string } 
         <div>
           <h1 className="text-3xl font-bold">Hola, {cand.nombre.split(" ")[0]} 👋</h1>
           <p className="mt-2 text-white/60">
-            Tenés 2 pruebas para completar. Podés hacerlas en el orden que quieras. Una vez que
-            enviás una prueba, no se puede rehacer.
+            Tenés 2 pruebas para completar.
+            <br />
+            <strong className="text-white">
+              Hacelas desde una computadora con teclado; no uses el celular ni la tablet.
+            </strong>
+            <br />
+            Podés hacerlas en el orden que quieras.
+            <br />
+            Una vez que enviás una prueba, no se puede rehacer.
           </p>
         </div>
+        <Vigilancia token={cand.token} />
         {cand.sesion_at && (
           <ContadorSesion sesionAt={cand.sesion_at} totalSegundos={TOTAL_SESION_SEGUNDOS} />
         )}

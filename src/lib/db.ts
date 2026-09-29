@@ -71,8 +71,11 @@ export async function crearCandidato(input: {
   return data as Candidato;
 }
 
+/** Conteo de eventos por prueba: { tipeo: {captura_pantalla: 2}, general: {dispositivo_tactil: 1} } */
+export type EventosPorPrueba = Record<string, Record<string, number>>;
+
 export async function listarCandidatos(): Promise<
-  (Candidato & { resultados: Resultado[] })[]
+  (Candidato & { resultados: Resultado[]; eventos: EventosPorPrueba })[]
 > {
   const supabase = getSupabaseAdmin();
   const { data: candidatos, error } = await supabase
@@ -84,6 +87,20 @@ export async function listarCandidatos(): Promise<
   const { data: resultados, error: e2 } = await supabase.from("pe_resultados").select("*");
   if (e2) throw new Error(e2.message);
 
+  const { data: eventos, error: e3 } = await supabase
+    .from("pe_eventos")
+    .select("candidato_id, tipo_prueba, evento")
+    .neq("evento", "estudio_completado");
+  if (e3) throw new Error(e3.message);
+  const evPorCand = new Map<string, EventosPorPrueba>();
+  for (const ev of (eventos ?? []) as { candidato_id: string; tipo_prueba: string | null; evento: string }[]) {
+    const porPrueba = evPorCand.get(ev.candidato_id) ?? {};
+    const k = ev.tipo_prueba ?? "general";
+    porPrueba[k] = porPrueba[k] ?? {};
+    porPrueba[k][ev.evento] = (porPrueba[k][ev.evento] ?? 0) + 1;
+    evPorCand.set(ev.candidato_id, porPrueba);
+  }
+
   const porCand = new Map<string, Resultado[]>();
   for (const r of (resultados ?? []) as Resultado[]) {
     if (!porCand.has(r.candidato_id)) porCand.set(r.candidato_id, []);
@@ -92,6 +109,7 @@ export async function listarCandidatos(): Promise<
   return ((candidatos ?? []) as Candidato[]).map((c) => ({
     ...c,
     resultados: porCand.get(c.id) ?? [],
+    eventos: evPorCand.get(c.id) ?? {},
   }));
 }
 
@@ -196,7 +214,7 @@ export async function yaCompletada(candidatoId: string, tipo: TipoPrueba): Promi
 
 export async function logEvento(input: {
   candidatoId: string;
-  tipoPrueba: TipoPrueba;
+  tipoPrueba: TipoPrueba | null;
   evento: string;
   meta?: unknown;
 }): Promise<void> {

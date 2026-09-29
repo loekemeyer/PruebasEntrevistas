@@ -19,10 +19,30 @@ type Candidato = {
   estado: string;
   created_at: string;
   resultados: Resultado[];
+  // conteo por prueba ("tipeo" | "memoria" | "general") y evento
+  eventos: Record<string, Record<string, number>>;
 };
 
 const TIPOS: Resultado["tipo"][] = ["tipeo", "memoria"];
 const NOMBRE_TIPO: Record<string, string> = { tipeo: "Tipeo", memoria: "Memoria" };
+
+type Observacion = { clave: string; texto: string; grave: boolean };
+
+// Lo que el admin tiene que ver sin abrir el detalle. No bloquea nada: solo avisa.
+function observaciones(c: Candidato): Observacion[] {
+  const ev = c.eventos ?? {};
+  const out: Observacion[] = [];
+  const tactil = Object.values(ev).reduce((n, e) => n + (e["dispositivo_tactil"] ?? 0), 0);
+  if (tactil > 0) out.push({ clave: "tactil", texto: "📱 Pantalla táctil sin mouse", grave: false });
+  for (const t of ["tipeo", "memoria", "general"]) {
+    const n = (ev[t]?.["captura_pantalla"] ?? 0) + (ev[t]?.["printscreen"] ?? 0);
+    if (n > 0) {
+      const donde = t === "general" ? "inicio" : NOMBRE_TIPO[t];
+      out.push({ clave: `cap-${t}`, texto: `📸 Captura ×${n} (${donde})`, grave: true });
+    }
+  }
+  return out;
+}
 
 // Puntajes en base 10.
 function color(p: number | null): string {
@@ -64,7 +84,7 @@ export default function AdminPanel({
     setCreando(false);
     if (res.ok) {
       const j = await res.json();
-      setCandidatos((prev) => [{ ...j.candidato, resultados: [] }, ...prev]);
+      setCandidatos((prev) => [{ ...j.candidato, resultados: [], eventos: {} }, ...prev]);
       setNombre("");
       setSector("");
     }
@@ -72,13 +92,13 @@ export default function AdminPanel({
 
   function mensaje(c: Candidato) {
     return (
-      `Hola ${c.nombre},\n` +
+      `Hola ${c.nombre}\n` +
       `Escribo de Loekemeyer Srl\n` +
-      `Luego de haber evaluado su perfil, queremos notificarte que avanzás ` +
-      `en el proceso de selección y para ello necesitamos que ingreses en el ` +
-      `siguiente link y completes las pruebas.\n` +
-      `Las mismas deben realizarse en una PC\n\n` +
-      `Link:\n${linkDe(c)}\n\n` +
+      `luego de haber evaluado tu perfil,\n` +
+      `queremos notificarte que avanzás en el proceso de selección\n` +
+      `y para ello necesitamos que ingreses en el siguiente link\n` +
+      `desde una PC y completes las pruebas:\n\n` +
+      `${linkDe(c)}\n\n` +
       `Código de acceso: ${c.codigo ?? "—"}`
     );
   }
@@ -141,7 +161,7 @@ export default function AdminPanel({
 
       <section className="card overflow-x-auto">
         <h2 className="mb-4 text-lg font-semibold">Candidatos ({candidatos.length})</h2>
-        <table className="w-full min-w-[820px] text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead className="text-left text-white/50">
             <tr className="border-b border-white/10">
               <th className="py-2 pr-3">Candidato</th>
@@ -151,6 +171,7 @@ export default function AdminPanel({
               ))}
               <th className="py-2 pr-3 text-center">Total</th>
               <th className="py-2 pr-3 text-center">Código</th>
+              <th className="py-2 pr-3">Observaciones</th>
               <th className="py-2 pr-3">Acceso</th>
               <th className="py-2"></th>
             </tr>
@@ -195,6 +216,9 @@ export default function AdminPanel({
                     </span>
                   </td>
                   <td className="py-3 pr-3">
+                    <Observaciones c={c} />
+                  </td>
+                  <td className="py-3 pr-3">
                     <button onClick={() => copiar(c)} className="btn-ghost px-2 py-1 text-xs">
                       {copiado === c.id ? "¡Copiado!" : "Copiar link + código"}
                     </button>
@@ -220,7 +244,7 @@ export default function AdminPanel({
             })}
             {candidatos.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-8 text-center text-white/40">
+                <td colSpan={10} className="py-8 text-center text-white/40">
                   Todavía no hay candidatos. Creá uno arriba.
                 </td>
               </tr>
@@ -269,6 +293,13 @@ function DetalleModal({
           </div>
         </div>
 
+        {observaciones(candidato).length > 0 && (
+          <div className="mb-4">
+            <p className="mb-1 text-xs text-white/40">Observaciones</p>
+            <Observaciones c={candidato} />
+          </div>
+        )}
+
         {candidato.resultados.length === 0 && (
           <p className="text-white/40">Sin pruebas enviadas todavía.</p>
         )}
@@ -285,6 +316,25 @@ function DetalleModal({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Observaciones({ c }: { c: Candidato }) {
+  const obs = observaciones(c);
+  if (obs.length === 0) return <span className="text-white/25">·</span>;
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {obs.map((o) => (
+        <span
+          key={o.clave}
+          className={`badge whitespace-nowrap ${
+            o.grave ? "bg-red-500/20 text-red-200" : "bg-amber-500/20 text-amber-200"
+          }`}
+        >
+          {o.texto}
+        </span>
+      ))}
     </div>
   );
 }

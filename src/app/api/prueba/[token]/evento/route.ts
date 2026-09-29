@@ -11,7 +11,8 @@ export async function POST(req: Request, { params }: { params: { token: string }
 
   const body = await req.json().catch(() => null);
   const evento = (body?.evento || "").toString().slice(0, 60);
-  const tipoPrueba: TipoPrueba = TIPOS.includes(body?.tipoPrueba) ? body.tipoPrueba : "memoria";
+  // null = fuera de una prueba (ej. dispositivo detectado en la pantalla inicial)
+  const tipoPrueba: TipoPrueba | null = TIPOS.includes(body?.tipoPrueba) ? body.tipoPrueba : null;
   if (!evento) return NextResponse.json({ ok: false }, { status: 400 });
 
   await logEvento({ candidatoId: cand.id, tipoPrueba, evento, meta: body?.meta ?? null });
