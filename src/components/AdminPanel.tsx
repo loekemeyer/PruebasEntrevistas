@@ -62,9 +62,11 @@ function color(p: number | null): string {
 export default function AdminPanel({
   candidatosInicial,
   baseUrl,
+  version,
 }: {
   candidatosInicial: Candidato[];
   baseUrl: string;
+  version: string | null;
 }) {
   const [candidatos, setCandidatos] = useState<Candidato[]>(candidatosInicial);
   const [nombre, setNombre] = useState("");
@@ -259,6 +261,22 @@ export default function AdminPanel({
           </tbody>
         </table>
       </section>
+
+      <footer className="mt-4 text-right text-xs text-white/30">
+        Versión publicada:{" "}
+        {version ? (
+          <a
+            href={`https://github.com/loekemeyer/PruebasEntrevistas/commit/${version}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono hover:underline"
+          >
+            {version}
+          </a>
+        ) : (
+          <span className="font-mono">local</span>
+        )}
+      </footer>
 
       {detalle && <DetalleModal candidato={detalle} link={linkDe(detalle)} onClose={() => setDetalle(null)} />}
     </main>

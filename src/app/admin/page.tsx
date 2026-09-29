@@ -11,5 +11,8 @@ export default async function AdminPage() {
   const candidatos = await listarCandidatos();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
 
-  return <AdminPanel candidatosInicial={candidatos} baseUrl={baseUrl} />;
+  // Commit del deploy (ver next.config.mjs); vacío en local.
+  const version = process.env.COMMIT_SHA?.slice(0, 7) || null;
+
+  return <AdminPanel candidatosInicial={candidatos} baseUrl={baseUrl} version={version} />;
 }
