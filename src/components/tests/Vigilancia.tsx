@@ -5,7 +5,7 @@ import { useEffect } from "react";
 /**
  * Registra (no bloquea) las señales que ve el admin en "Observaciones":
  * - dispositivo_tactil: pantalla táctil sin mouse (celular/tablet). Una vez por pestaña.
- * - perdio_foco / cambio_pestania: solo dentro de una prueba (tipoPrueba), no en el inicio.
+ * - perdio_foco (salir de la ventana o cambiar de pestaña, una vez por salida): solo dentro de una prueba (tipoPrueba), no en el inicio.
  * - captura_pantalla: PrintScreen / Win+Shift+S / Cmd+Shift+3-5. El navegador solo ve
  *   las teclas que el sistema operativo le deja pasar; una foto con el celular no se detecta.
  */
@@ -43,10 +43,18 @@ export default function Vigilancia({
       } catch {}
     }
 
-    const onVisibility = () => {
-      if (document.hidden) log("cambio_pestania");
+    // Cambiar de pestaña dispara blur + visibilitychange: se cuenta una sola salida.
+    let ultimaSalida = 0;
+    const salir = () => {
+      const ahora = Date.now();
+      if (ahora - ultimaSalida < 1000) return;
+      ultimaSalida = ahora;
+      log("perdio_foco");
     };
-    const onBlur = () => log("perdio_foco");
+    const onVisibility = () => {
+      if (document.hidden) salir();
+    };
+    const onBlur = salir;
     if (tipoPrueba) {
       document.addEventListener("visibilitychange", onVisibility);
       window.addEventListener("blur", onBlur);

@@ -132,18 +132,20 @@ export default function MemoriaTest({
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.key === "PrintScreen") marcarCaptura("PrintScreen");
     };
-    const onVisibility = () => {
-      if (document.hidden) {
-        setOculto(true);
-        logEvento("cambio_pestania");
-      } else {
-        setOculto(false);
-      }
-    };
-    const onBlur = () => {
+    // Cambiar de pestaña dispara blur + visibilitychange: se cuenta una sola salida.
+    let ultimaSalida = 0;
+    const salir = () => {
       setOculto(true);
+      const ahora = Date.now();
+      if (ahora - ultimaSalida < 1000) return;
+      ultimaSalida = ahora;
       logEvento("perdio_foco");
     };
+    const onVisibility = () => {
+      if (document.hidden) salir();
+      else setOculto(false);
+    };
+    const onBlur = salir;
     const onFocus = () => setOculto(false);
 
     window.addEventListener("keydown", onKeyDown);
