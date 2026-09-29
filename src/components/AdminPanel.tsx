@@ -41,6 +41,15 @@ function observaciones(c: Candidato): Observacion[] {
       out.push({ clave: `cap-${t}`, texto: `📸 Captura ×${n} (${donde})`, grave: true });
     }
   }
+  // Salir de la ventana / cambiar de pestaña solo cuenta durante una prueba, no en el inicio.
+  for (const t of ["tipeo", "memoria"]) {
+    const foco = ev[t]?.["perdio_foco"] ?? 0;
+    const pestania = ev[t]?.["cambio_pestania"] ?? 0;
+    if (foco > 0)
+      out.push({ clave: `foco-${t}`, texto: `🪟 Salió de la ventana ×${foco} (${NOMBRE_TIPO[t]})`, grave: false });
+    if (pestania > 0)
+      out.push({ clave: `pest-${t}`, texto: `🗂 Cambió de pestaña ×${pestania} (${NOMBRE_TIPO[t]})`, grave: false });
+  }
   return out;
 }
 
@@ -92,7 +101,7 @@ export default function AdminPanel({
 
   function mensaje(c: Candidato) {
     return (
-      `Hola ${c.nombre}\n` +
+      `Hola ${c.nombre.trim().split(/\s+/)[0]}\n` +
       `Escribo de Loekemeyer Srl\n` +
       `luego de haber evaluado tu perfil,\n` +
       `queremos notificarte que avanzás en el proceso de selección\n` +

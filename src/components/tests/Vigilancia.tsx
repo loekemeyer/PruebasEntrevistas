@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 
 /**
- * Registra (no bloquea) dos señales que ve el admin en "Observaciones":
+ * Registra (no bloquea) las señales que ve el admin en "Observaciones":
  * - dispositivo_tactil: pantalla táctil sin mouse (celular/tablet). Una vez por pestaña.
+ * - perdio_foco / cambio_pestania: solo dentro de una prueba (tipoPrueba), no en el inicio.
  * - captura_pantalla: PrintScreen / Win+Shift+S / Cmd+Shift+3-5. El navegador solo ve
  *   las teclas que el sistema operativo le deja pasar; una foto con el celular no se detecta.
  */
@@ -42,7 +43,20 @@ export default function Vigilancia({
       } catch {}
     }
 
-    if (!capturas) return;
+    const onVisibility = () => {
+      if (document.hidden) log("cambio_pestania");
+    };
+    const onBlur = () => log("perdio_foco");
+    if (tipoPrueba) {
+      document.addEventListener("visibilitychange", onVisibility);
+      window.addEventListener("blur", onBlur);
+    }
+    const quitarFoco = () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+    };
+
+    if (!capturas) return quitarFoco;
     let ultima = 0;
     const marcar = (metodo: string) => {
       const ahora = Date.now();
@@ -63,6 +77,7 @@ export default function Vigilancia({
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     return () => {
+      quitarFoco();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
